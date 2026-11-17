@@ -1,6 +1,7 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import type { CustomTShirtState, PlacedDesign, PresetPlacement } from '../types';
 import { PRINT_ZONE_PRESETS, SAMPLE_ARTWORKS } from '../data/mockData';
+import { AiDesignGenerator } from './AiDesignGenerator';
 import {
   Upload,
   Sparkles,
@@ -22,6 +23,7 @@ export const DesignUploadPanel: React.FC<DesignUploadPanelProps> = ({
   state,
   onUpdateDesign,
 }) => {
+  const [sourceMode, setSourceMode] = useState<'upload' | 'ai'>('ai');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const activeDesign = state.designs[state.activeView] || null;
 
@@ -67,6 +69,24 @@ export const DesignUploadPanel: React.FC<DesignUploadPanelProps> = ({
     };
     reader.readAsDataURL(file);
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleApplyAiDesign = (dataUrl: string, promptName: string) => {
+    const defaultPreset = currentPresets[0];
+    onUpdateDesign({
+      imageUrl: dataUrl,
+      originalImageUrl: dataUrl,
+      fileName: promptName,
+      zonePreset: activeDesign?.zonePreset || defaultPreset.id,
+      x: defaultPreset.defaultX,
+      y: defaultPreset.defaultY,
+      scale: 1,
+      rotation: 0,
+      aspectRatio: 1,
+      wrinkleIntensity: 0.92,
+      blendMode: 'normal',
+      cornerRadius: 0,
+    });
   };
 
   const handleApplySample = (sample: (typeof SAMPLE_ARTWORKS)[0]) => {
@@ -184,69 +204,109 @@ export const DesignUploadPanel: React.FC<DesignUploadPanelProps> = ({
 
   return (
     <div className="space-y-5">
-      {/* Upload Action Card */}
-      <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl">
-        <label className="block text-xs font-semibold text-slate-700 mb-2">
-          Upload Desain ({state.activeView === 'front' ? 'Tampak Depan' : state.activeView === 'back' ? 'Tampak Belakang' : 'Area Lengan'})
-        </label>
-
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/png,image/jpeg,image/svg+xml,image/webp"
-          onChange={handleFileUpload}
-          className="hidden"
-        />
-
+      {/* Method Switcher Tabs: AI Generator vs File Upload */}
+      <div className="flex items-center p-1 bg-slate-100 rounded-2xl border border-slate-200">
         <button
-          onClick={() => fileInputRef.current?.click()}
-          className="w-full flex flex-col items-center justify-center p-5 border-2 border-dashed border-sky-300 hover:border-sky-500 bg-sky-50/50 hover:bg-sky-50 rounded-xl transition cursor-pointer group"
+          type="button"
+          onClick={() => setSourceMode('ai')}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+            sourceMode === 'ai'
+              ? 'bg-gradient-to-r from-indigo-600 to-sky-600 text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
         >
-          <div className="w-10 h-10 rounded-full bg-sky-100 text-sky-600 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-            <Upload className="w-5 h-5" />
-          </div>
-          <span className="text-xs font-bold text-slate-800">
-            {activeDesign ? 'Ganti File Gambar Desain' : 'Klik untuk Upload Gambar Desain'}
-          </span>
-          <span className="text-[11px] text-slate-500 mt-0.5">
-            Format PNG transparan, JPG, atau SVG
-          </span>
+          <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+          <span>Buat Desain AI</span>
         </button>
 
-        {activeDesign && (
-          <div className="mt-2.5 space-y-2">
-            <div className="flex items-center justify-between text-[11px] bg-white px-2.5 py-1.5 rounded-lg border border-slate-200">
-              <span className="truncate max-w-[200px] text-slate-700 font-mono">
-                📎 {activeDesign.fileName}
-              </span>
-              <span className="text-emerald-600 font-medium">Terpasang ✓</span>
-            </div>
-
-            {/* Quick Background Remover Button */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleRemoveBackground}
-                className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-lg text-[11px] font-bold shadow-xs transition"
-                title="Hapus background warna/putih otomatis agar gambar menyatu dengan kaos"
-              >
-                <Wand2 className="w-3.5 h-3.5" />
-                <span>Hapus Background Otomatis</span>
-              </button>
-
-              {activeDesign.originalImageUrl && (
-                <button
-                  onClick={handleRestoreBackground}
-                  className="flex items-center justify-center gap-1 py-1.5 px-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-[11px] font-semibold transition"
-                  title="Kembalikan background kotak asli"
-                >
-                  <Undo2 className="w-3.5 h-3.5" />
-                  <span>Undo</span>
-                </button>
-              )}
-            </div>
-          </div>
-        )}
+        <button
+          type="button"
+          onClick={() => setSourceMode('upload')}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+            sourceMode === 'upload'
+              ? 'bg-white text-slate-900 shadow-xs'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <Upload className="w-3.5 h-3.5" />
+          <span>Upload File Sendiri</span>
+        </button>
       </div>
+
+      {/* Mode A: AI Generator */}
+      {sourceMode === 'ai' ? (
+        <AiDesignGenerator
+          onApplyDesign={handleApplyAiDesign}
+          activeView={state.activeView}
+        />
+      ) : (
+        /* Mode B: Manual File Upload */
+        <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl">
+          <label className="block text-xs font-semibold text-slate-700 mb-2">
+            Upload File ({state.activeView === 'front' ? 'Tampak Depan' : state.activeView === 'back' ? 'Tampak Belakang' : 'Area Lengan'})
+          </label>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/svg+xml,image/webp"
+            onChange={handleFileUpload}
+            className="hidden"
+          />
+
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="w-full flex flex-col items-center justify-center p-5 border-2 border-dashed border-sky-300 hover:border-sky-500 bg-sky-50/50 hover:bg-sky-50 rounded-xl transition cursor-pointer group"
+          >
+            <div className="w-10 h-10 rounded-full bg-sky-100 text-sky-600 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+              <Upload className="w-5 h-5" />
+            </div>
+            <span className="text-xs font-bold text-slate-800">
+              {activeDesign ? 'Ganti File Gambar Desain' : 'Klik untuk Upload Gambar Desain'}
+            </span>
+            <span className="text-[11px] text-slate-500 mt-0.5">
+              Format PNG transparan, JPG, atau SVG
+            </span>
+          </button>
+        </div>
+      )}
+
+      {/* Active Design Badge & Quick Actions */}
+      {activeDesign && (
+        <div className="p-3 bg-white border border-slate-200 rounded-2xl space-y-2">
+          <div className="flex items-center justify-between text-[11px] bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200/80">
+            <span className="truncate max-w-[200px] text-slate-700 font-mono font-medium">
+              📎 {activeDesign.fileName}
+            </span>
+            <span className="text-emerald-600 font-bold flex items-center gap-1">
+              <CheckCircle2 className="w-3.5 h-3.5" /> Terpasang
+            </span>
+          </div>
+
+          {/* Quick Background Remover Button */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleRemoveBackground}
+              className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-lg text-[11px] font-bold shadow-xs transition cursor-pointer"
+              title="Hapus background warna/putih otomatis agar gambar menyatu dengan kaos"
+            >
+              <Wand2 className="w-3.5 h-3.5" />
+              <span>Hapus Background Otomatis</span>
+            </button>
+
+            {activeDesign.originalImageUrl && (
+              <button
+                onClick={handleRestoreBackground}
+                className="flex items-center justify-center gap-1 py-1.5 px-2.5 bg-slate-150 hover:bg-slate-200 text-slate-700 rounded-lg text-[11px] font-semibold transition cursor-pointer"
+                title="Kembalikan background kotak asli"
+              >
+                <Undo2 className="w-3.5 h-3.5" />
+                <span>Undo</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Preset Placement Selection (Auto-adjust) */}
       <div>
@@ -266,7 +326,7 @@ export const DesignUploadPanel: React.FC<DesignUploadPanelProps> = ({
               <button
                 key={preset.id}
                 onClick={() => handleSelectPreset(preset.id)}
-                className={`text-left p-2.5 rounded-xl border text-xs transition-all relative ${
+                className={`text-left p-2.5 rounded-xl border text-xs transition-all relative cursor-pointer ${
                   isSelected
                     ? 'border-sky-500 bg-sky-50/70 shadow-xs ring-1 ring-sky-500'
                     : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
@@ -276,7 +336,7 @@ export const DesignUploadPanel: React.FC<DesignUploadPanelProps> = ({
                   <span className={`font-bold ${isSelected ? 'text-sky-900' : 'text-slate-800'}`}>
                     {preset.name}
                   </span>
-                  <span className="text-[10px] font-mono text-slate-600 bg-slate-150 px-1.5 py-0.5 rounded">
+                  <span className="text-[10px] font-mono text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded">
                     {preset.dimensions}
                   </span>
                 </div>
@@ -383,9 +443,9 @@ export const DesignUploadPanel: React.FC<DesignUploadPanelProps> = ({
               className="w-full accent-sky-600 h-1.5 bg-slate-200 rounded-lg cursor-pointer"
             />
             <div className="flex justify-between text-[9px] text-slate-400 mt-0.5">
-              <span>Naik ke Atas (Kepotong Atas)</span>
+              <span>Naik ke Atas</span>
               <span>Tengah (0)</span>
-              <span>Turun ke Bawah (Kepotong Bawah)</span>
+              <span>Turun ke Bawah</span>
             </div>
           </div>
 
@@ -475,14 +535,14 @@ export const DesignUploadPanel: React.FC<DesignUploadPanelProps> = ({
       <div className="p-3.5 bg-slate-50/80 border border-slate-200/60 rounded-2xl">
         <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 mb-2">
           <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-          <span>Gunakan Desain Contoh (Preview Cepat)</span>
+          <span>Atau Gunakan Desain Contoh (Preview Cepat)</span>
         </div>
         <div className="grid grid-cols-3 gap-2">
           {SAMPLE_ARTWORKS.map((sample) => (
             <button
               key={sample.id}
               onClick={() => handleApplySample(sample)}
-              className="flex flex-col items-center p-2 rounded-xl border border-slate-200 bg-white hover:border-sky-400 hover:shadow-xs transition group text-center"
+              className="flex flex-col items-center p-2 rounded-xl border border-slate-200 bg-white hover:border-sky-400 hover:shadow-xs transition group text-center cursor-pointer"
             >
               <div
                 className="w-12 h-12 flex items-center justify-center p-1 bg-slate-900 rounded-lg mb-1.5 group-hover:scale-105 transition-transform"

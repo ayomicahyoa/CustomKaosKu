@@ -304,7 +304,13 @@ export function App() {
 
           drawShadingAndExport();
         };
-        designImg.src = activeDesign.imageUrl;
+
+        // If image is an external http URL, wrap through weserv proxy to guarantee CORS for export
+        let srcToLoad = activeDesign.imageUrl;
+        if (srcToLoad.startsWith('http') && !srcToLoad.includes('images.weserv.nl')) {
+          srcToLoad = `https://images.weserv.nl/?url=${encodeURIComponent(srcToLoad)}`;
+        }
+        designImg.src = srcToLoad;
       } else {
         drawShadingAndExport();
       }
