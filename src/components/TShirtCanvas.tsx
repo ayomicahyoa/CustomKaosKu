@@ -1,10 +1,11 @@
 import React from 'react';
-import type { CustomTShirtState, PlacedDesign } from '../types';
+import type { CustomTShirtState, PlacedDesign, PrintZonePreset } from '../types';
 import { PRINT_ZONE_PRESETS } from '../data/mockData';
 import { Trash2, Eye, EyeOff, Sparkles } from 'lucide-react';
 
 interface TShirtCanvasProps {
   state: CustomTShirtState;
+  printZones?: PrintZonePreset[];
   onUpdateDesign: (design: PlacedDesign | null) => void;
   showGuides: boolean;
   setShowGuides: (val: boolean) => void;
@@ -12,6 +13,7 @@ interface TShirtCanvasProps {
 
 export const TShirtCanvas: React.FC<TShirtCanvasProps> = ({
   state,
+  printZones = PRINT_ZONE_PRESETS,
   onUpdateDesign,
   showGuides,
   setShowGuides,
@@ -19,7 +21,7 @@ export const TShirtCanvas: React.FC<TShirtCanvasProps> = ({
   const activeDesign = state.designs[state.activeView] || null;
 
   // Active presets for the current view (mirrored for right sleeve)
-  const currentPresets = PRINT_ZONE_PRESETS.filter((p) => {
+  const currentPresets = printZones.filter((p) => {
     if (state.activeView === 'sleeve-left' || state.activeView === 'sleeve-right') {
       return p.view === 'sleeve-left';
     }

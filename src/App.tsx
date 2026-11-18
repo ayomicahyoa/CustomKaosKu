@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type {
   CustomTShirtState,
   NeckType,
@@ -8,23 +8,60 @@ import type {
   PrintTechnique,
   PlacedDesign,
   ViewAngle,
+  ShirtSize,
 } from './types';
+import { SAMPLE_ARTWORKS } from './data/mockData';
 import {
-  SHIRT_COLORS,
-  MATERIALS,
-  PRINT_TECHNIQUES,
-  PRINT_ZONE_PRESETS,
-  SAMPLE_ARTWORKS,
-} from './data/mockData';
+  loadProductDatabase,
+  syncCatalogFromCloud,
+  type ProductDatabaseState,
+} from './services/pricingStorage';
 import { Navbar } from './components/Navbar';
 import { TShirtCanvas } from './components/TShirtCanvas';
 import { ViewAngleSwitcher } from './components/ViewAngleSwitcher';
 import { DesignUploadPanel } from './components/DesignUploadPanel';
 import { ConfiguratorSidebar } from './components/ConfiguratorSidebar';
 import { PriceSummaryBar } from './components/PriceSummaryBar';
-import { Image, Settings, CheckCircle2, Sparkles, ChevronDown } from 'lucide-react';
+import { AdminDashboard } from './components/AdminDashboard';
+import { OrderTrackingPage } from './components/OrderTrackingPage';
+import {
+  Image,
+  Settings,
+  CheckCircle2,
+  Sparkles,
+  ChevronDown,
+} from 'lucide-react';
+
+export type AppRoute = 'studio' | 'admin' | 'tracking';
+
+const getInitialRoute = (): AppRoute => {
+  if (typeof window === 'undefined') return 'studio';
+  const path = window.location.pathname.toLowerCase();
+  const hash = window.location.hash.toLowerCase();
+  const search = window.location.search.toLowerCase();
+  if (
+    path.endsWith('/adm') ||
+    path.endsWith('/adm/') ||
+    hash.includes('adm') ||
+    search.includes('page=adm')
+  ) {
+    return 'admin';
+  }
+  if (
+    path.includes('cekorderan') ||
+    hash.includes('cekorderan') ||
+    search.includes('page=cekorderan') ||
+    search.includes('page=tracking')
+  ) {
+    return 'tracking';
+  }
+  return 'studio';
+};
 
 export function App() {
+  // Load dynamic product pricing & catalog database from localStorage (or defaults)
+  const [db, setDb] = useState<ProductDatabaseState>(() => loadProductDatabase());
+
   const defaultFrontSample = SAMPLE_ARTWORKS[0];
   const defaultBlob = new Blob([defaultFrontSample.svg], { type: 'image/svg+xml;charset=utf-8' });
   const defaultSampleUrl = URL.createObjectURL(defaultBlob);
@@ -32,7 +69,7 @@ export function App() {
   const initialDesign: PlacedDesign = {
     imageUrl: defaultSampleUrl,
     fileName: `${defaultFrontSample.name}.svg`,
-    zonePreset: 'front-a4',
+    zonePreset: db.printZones[0]?.id || 'front-a4',
     x: 50,
     y: 46,
     scale: 1,
@@ -43,20 +80,58 @@ export function App() {
   const [state, setState] = useState<CustomTShirtState>({
     neckType: 'round',
     sleeveType: 'short',
-    color: SHIRT_COLORS[0], // Jet Black
-    material: MATERIALS[0], // Combed 30s
-    technique: PRINT_TECHNIQUES[0], // DTF
+    color: db.colors[0], // First color from DB
+    material: db.materials[0], // First material from DB
+    technique: db.techniques[0], // First technique from DB
     activeView: 'front',
     designs: {
       front: initialDesign,
     },
     size: 'L',
+    sizeBreakdown: { S: 2, M: 4, L: 4, XL: 2, XXL: 0, '3XL': 0 },
     quantity: 12,
   });
 
-  const [activeTab, setActiveTab] = useState<'design' | 'config'>('design');
+  const [activeTab, setActiveTab] = useState<'design' | 'config'>('config');
   const [showGuides, setShowGuides] = useState<boolean>(false); // By default false (mati)
   const [downloadSuccessToast, setDownloadSuccessToast] = useState(false);
+
+  // Standalone Route Navigation: studio vs admin vs tracking
+  const [currentRoute, setCurrentRoute] = useState<AppRoute>(getInitialRoute);
+
+  useEffect(() => {
+    const handleRouteChange = () => {
+      setCurrentRoute(getInitialRoute());
+    };
+    window.addEventListener('popstate', handleRouteChange);
+    window.addEventListener('hashchange', handleRouteChange);
+    return () => {
+      window.removeEventListener('popstate', handleRouteChange);
+      window.removeEventListener('hashchange', handleRouteChange);
+    };
+  }, []);
+
+  const navigateTo = (route: AppRoute) => {
+    if (route === 'admin') {
+      window.location.hash = '/adm';
+    } else if (route === 'tracking') {
+      window.location.hash = '/cekorderan';
+    } else {
+      window.location.hash = '';
+      if (
+        window.location.pathname.endsWith('/adm') ||
+        window.location.pathname.endsWith('/adm/') ||
+        window.location.pathname.includes('cekorderan')
+      ) {
+        window.history.pushState(
+          null,
+          '',
+          window.location.pathname.replace(/\/adm\/?$/, '').replace(/\/cekorderan\/?$/, '') || '/'
+        );
+      }
+    }
+    setCurrentRoute(route);
+  };
 
   // Mobile collapsible sections
   const [mobileOpenSection, setMobileOpenSection] = useState<'design' | 'config' | null>(null);
@@ -64,6 +139,35 @@ export function App() {
   const toggleMobileSection = (section: 'design' | 'config') => {
     setMobileOpenSection((prev) => (prev === section ? null : section));
   };
+
+  // Synchronize state when admin updates product catalog
+  const handleUpdateDb = (newDb: ProductDatabaseState) => {
+    setDb(newDb);
+    setState((prev) => {
+      const matchingMat =
+        newDb.materials.find((m) => m.id === prev.material.id) || newDb.materials[0];
+      const matchingTech =
+        newDb.techniques.find((t) => t.id === prev.technique.id) || newDb.techniques[0];
+      const matchingColor =
+        newDb.colors.find((c) => c.id === prev.color.id) || newDb.colors[0];
+
+      return {
+        ...prev,
+        material: matchingMat,
+        technique: matchingTech,
+        color: matchingColor,
+      };
+    });
+  };
+
+  // Background sync catalog from Supabase cloud on mount
+  useEffect(() => {
+    syncCatalogFromCloud().then((cloudDb) => {
+      if (cloudDb) {
+        handleUpdateDb(cloudDb);
+      }
+    });
+  }, []);
 
   // Handlers
   const handleUpdateDesign = (design: PlacedDesign | null) => {
@@ -82,13 +186,39 @@ export function App() {
     setState({
       neckType: 'round',
       sleeveType: 'short',
-      color: SHIRT_COLORS[0],
-      material: MATERIALS[0],
-      technique: PRINT_TECHNIQUES[0],
+      color: db.colors[0],
+      material: db.materials[0],
+      technique: db.techniques[0],
       activeView: 'front',
       designs: {},
       size: 'L',
+      sizeBreakdown: { S: 0, M: 0, L: 1, XL: 0, XXL: 0, '3XL': 0 },
       quantity: 1,
+    });
+  };
+
+  const handleUpdateSizeBreakdown = (newBreakdown: Record<ShirtSize, number>) => {
+    const total = Object.values(newBreakdown).reduce((acc, v) => acc + v, 0);
+    setState((prev) => ({
+      ...prev,
+      sizeBreakdown: newBreakdown,
+      quantity: Math.max(1, total),
+    }));
+  };
+
+  const handleUpdateQuantityFromBar = (qty: number) => {
+    setState((prev) => {
+      const safeQty = Math.max(1, qty);
+      const activeSize: ShirtSize = prev.size || 'L';
+      const currentBreakdown = { ...(prev.sizeBreakdown || { S: 0, M: 0, L: 0, XL: 0, XXL: 0, '3XL': 0 }) };
+      const currentTotal = Object.values(currentBreakdown).reduce((acc, v) => acc + v, 0);
+      const diff = safeQty - currentTotal;
+      currentBreakdown[activeSize] = Math.max(0, (currentBreakdown[activeSize] || 0) + diff);
+      return {
+        ...prev,
+        quantity: safeQty,
+        sizeBreakdown: currentBreakdown,
+      };
     });
   };
 
@@ -243,9 +373,10 @@ export function App() {
         const designImg = new window.Image();
         designImg.crossOrigin = 'anonymous';
         designImg.onload = () => {
+          // Dynamic print zone from database
           const activePreset =
-            PRINT_ZONE_PRESETS.find((p) => p.id === activeDesign.zonePreset) ||
-            PRINT_ZONE_PRESETS[0];
+            db.printZones.find((p) => p.id === activeDesign.zonePreset) ||
+            db.printZones[0];
           const presetX =
             state.activeView === 'sleeve-right'
               ? 100 - activePreset.defaultX
@@ -318,6 +449,124 @@ export function App() {
     photoImg.src = getPhotoPath();
   };
 
+  // Capture mockup preview for a specific view angle (no watermark, 600x750)
+  const captureViewMockup = (view: ViewAngle): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 600;
+      canvas.height = 750;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { reject(new Error('No canvas context')); return; }
+
+      const grad = ctx.createRadialGradient(300, 300, 50, 300, 337, 600);
+      grad.addColorStop(0, '#ffffff');
+      grad.addColorStop(1, '#f1f5f9');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 600, 750);
+
+      const baseUrl = import.meta.env.BASE_URL;
+      const getPath = () => {
+        if (view === 'front')
+          return state.neckType === 'round'
+            ? `${baseUrl}mockups/tshirt-front-round-real.png`
+            : `${baseUrl}mockups/tshirt-front-vneck-real.png`;
+        if (view === 'back') return `${baseUrl}mockups/tshirt-back-real.png`;
+        if (view === 'sleeve-left') return `${baseUrl}mockups/tshirt-sleeve-left-real.png`;
+        return `${baseUrl}mockups/tshirt-sleeve-right-real.png`;
+      };
+
+      const photoImg = new window.Image();
+      photoImg.crossOrigin = 'anonymous';
+      photoImg.onload = () => {
+        const cW = canvas.width * 0.92, cH = canvas.height * 0.92;
+        const cX = (canvas.width - cW) / 2, cY = (canvas.height - cH) / 2;
+        const pNW = photoImg.naturalWidth || 1000, pNH = photoImg.naturalHeight || 1200;
+        const pA = pNW / pNH, cA = cW / cH;
+        let pW = cW, pH = cH;
+        if (pA > cA) pH = cW / pA; else pW = cH * pA;
+        const pX = cX + (cW - pW) / 2, pY = cY + (cH - pH) / 2;
+
+        const off = document.createElement('canvas');
+        off.width = canvas.width; off.height = canvas.height;
+        const oCtx = off.getContext('2d');
+        if (!oCtx) { reject(new Error('No offscreen ctx')); return; }
+        oCtx.fillStyle = state.color.hex;
+        oCtx.fillRect(0, 0, off.width, off.height);
+        oCtx.globalCompositeOperation = 'destination-in';
+        oCtx.drawImage(photoImg, pX, pY, pW, pH);
+        ctx.drawImage(off, 0, 0);
+
+        const finalize = () => {
+          const ad = state.designs[view];
+          ctx.globalCompositeOperation = 'multiply';
+          ctx.globalAlpha = ad?.wrinkleIntensity ?? 0.92;
+          ctx.drawImage(photoImg, pX, pY, pW, pH);
+          ctx.globalCompositeOperation = 'screen';
+          ctx.globalAlpha = state.color.isDark ? 0.30 : 0.14;
+          ctx.drawImage(photoImg, pX, pY, pW, pH);
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = 1.0;
+          resolve(canvas.toDataURL('image/jpeg', 0.85));
+        };
+
+        const activeDesign = state.designs[view];
+        if (activeDesign) {
+          const dImg = new window.Image();
+          dImg.crossOrigin = 'anonymous';
+          dImg.onload = () => {
+            const ap = db.printZones.find(p => p.id === activeDesign.zonePreset) || db.printZones[0];
+            const prX = view === 'sleeve-right' ? 100 - ap.defaultX : ap.defaultX;
+            const bW = cW * (ap.defaultWidth / 100), bH = cH * (ap.defaultHeight / 100);
+            const bCX = cX + cW * (prX / 100), bCY = cY + cH * (ap.defaultY / 100);
+            const bL = bCX - bW / 2, bT = bCY - bH / 2;
+            const iNW = dImg.naturalWidth || 1, iNH = dImg.naturalHeight || 1;
+            const iA = iNW / iNH, bA = bW / bH;
+            let baseW: number, baseH: number;
+            if (iA > bA) { baseW = bW; baseH = bW / iA; } else { baseH = bH; baseW = bH * iA; }
+            const sc = activeDesign.scale || 1;
+            const dw = baseW * sc, dh = baseH * sc;
+            ctx.save();
+            ctx.beginPath(); ctx.rect(bL, bT, bW, bH); ctx.clip();
+            const oXPx = bW * ((activeDesign.offsetX || 0) / 100);
+            const oYPx = bH * ((activeDesign.offsetY || 0) / 100);
+            ctx.translate(bCX + oXPx, bCY + oYPx);
+            ctx.rotate(((activeDesign.rotation || 0) * Math.PI) / 180);
+            if (activeDesign.cornerRadius && activeDesign.cornerRadius > 0 && typeof ctx.roundRect === 'function') {
+              ctx.beginPath(); ctx.roundRect(-dw / 2, -dh / 2, dw, dh, activeDesign.cornerRadius * (dw / baseW)); ctx.clip();
+            }
+            ctx.drawImage(dImg, -dw / 2, -dh / 2, dw, dh);
+            ctx.restore();
+            finalize();
+          };
+          dImg.onerror = () => finalize();
+          let src = activeDesign.imageUrl;
+          if (src.startsWith('http') && !src.includes('images.weserv.nl'))
+            src = `https://images.weserv.nl/?url=${encodeURIComponent(src)}`;
+          dImg.src = src;
+        } else {
+          finalize();
+        }
+      };
+      photoImg.onerror = () => reject(new Error('Failed to load t-shirt photo'));
+      photoImg.src = getPath();
+    });
+  };
+
+  // Capture mockup previews for all 4 angles (front, back, sleeve-left, sleeve-right)
+  const handleCaptureAllMockups = async (): Promise<{ primary: string; all: Record<ViewAngle, string> }> => {
+    const views: ViewAngle[] = ['front', 'back', 'sleeve-left', 'sleeve-right'];
+    const all = {} as Record<ViewAngle, string>;
+    for (const v of views) {
+      try {
+        all[v] = await captureViewMockup(v);
+      } catch (err) {
+        console.warn(`Failed to capture mockup for view ${v}:`, err);
+      }
+    }
+    const primary = all.front || all[state.activeView] || Object.values(all)[0] || '';
+    return { primary, all };
+  };
+
   const triggerDownload = (canvas: HTMLCanvasElement) => {
     const pngUrl = canvas.toDataURL('image/png');
     const downloadLink = document.createElement('a');
@@ -329,10 +578,33 @@ export function App() {
     setTimeout(() => setDownloadSuccessToast(false), 3000);
   };
 
+  // If URL route is Admin (/adm or #/adm)
+  if (currentRoute === 'admin') {
+    return (
+      <AdminDashboard
+        db={db}
+        onUpdateDb={handleUpdateDb}
+        onNavigateToStudio={() => navigateTo('studio')}
+      />
+    );
+  }
+
+  // If URL route is Customer Order Tracking (#/cekorderan or /cekorderan)
+  if (currentRoute === 'tracking') {
+    return (
+      <OrderTrackingPage
+        onNavigateToStudio={() => navigateTo('studio')}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col font-sans pb-28">
       {/* Top Navbar */}
-      <Navbar onReset={handleReset} />
+      <Navbar
+        onReset={handleReset}
+        onNavigateToTracking={() => navigateTo('tracking')}
+      />
 
       {/* Main Studio Area */}
       <main className="max-w-7xl mx-auto w-full px-3 sm:px-4 lg:px-6 py-3 sm:py-6 flex-1 flex flex-col">
@@ -368,9 +640,10 @@ export function App() {
               designs={state.designs}
             />
 
-            {/* The Canvas */}
+            {/* The Canvas with dynamic printZones */}
             <TShirtCanvas
               state={state}
+              printZones={db.printZones}
               onUpdateDesign={handleUpdateDesign}
               showGuides={showGuides}
               setShowGuides={setShowGuides}
@@ -378,93 +651,62 @@ export function App() {
           </div>
 
           {/* RIGHT: Controls & Customization Sidebar (5 cols on lg) */}
-          {/* Desktop: Tabbed panel / Mobile: Collapsible accordion sections */}
           <div className="lg:col-span-5 flex flex-col gap-3 lg:gap-0">
             {/* ===== DESKTOP SIDEBAR (hidden on mobile) ===== */}
             <div className="hidden lg:flex flex-col bg-white rounded-3xl p-5 shadow-sm border border-slate-200">
               {/* Sidebar Navigation Tabs */}
               <div className="flex items-center p-1 bg-slate-100 rounded-2xl mb-5">
                 <button
-                  onClick={() => setActiveTab('design')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                    activeTab === 'design'
-                      ? 'bg-white text-slate-900 shadow-xs'
-                      : 'text-slate-500 hover:text-slate-800'
-                  }`}
-                >
-                  <Image className="w-4 h-4 text-sky-600" />
-                  <span>Upload & Sablon</span>
-                </button>
-
-                <button
                   onClick={() => setActiveTab('config')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all ${
-                    activeTab === 'config'
+                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all ${activeTab === 'config'
                       ? 'bg-white text-slate-900 shadow-xs'
                       : 'text-slate-500 hover:text-slate-800'
-                  }`}
+                    }`}
                 >
                   <Settings className="w-4 h-4 text-indigo-600" />
                   <span>Spesifikasi Kaos</span>
+                </button>
+
+                <button
+                  onClick={() => setActiveTab('design')}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all ${activeTab === 'design'
+                      ? 'bg-white text-slate-900 shadow-xs'
+                      : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                >
+                  <Image className="w-4 h-4 text-sky-600" />
+                  <span>Upload & Sablon</span>
                 </button>
               </div>
 
               {/* Tab Contents */}
               <div className="max-h-[calc(100vh-280px)] overflow-y-auto pr-1">
-                {activeTab === 'design' ? (
-                  <DesignUploadPanel
-                    state={state}
-                    onUpdateDesign={handleUpdateDesign}
-                  />
-                ) : (
+                {activeTab === 'config' ? (
                   <ConfiguratorSidebar
                     state={state}
+                    materials={db.materials}
+                    techniques={db.techniques}
+                    colors={db.colors}
                     onChangeNeck={(neck: NeckType) => setState((prev) => ({ ...prev, neckType: neck }))}
                     onChangeSleeve={(sleeve: SleeveType) => setState((prev) => ({ ...prev, sleeveType: sleeve }))}
                     onChangeColor={(color: ShirtColor) => setState((prev) => ({ ...prev, color }))}
                     onChangeMaterial={(mat: MaterialOption) => setState((prev) => ({ ...prev, material: mat }))}
                     onChangeTechnique={(tech: PrintTechnique) => setState((prev) => ({ ...prev, technique: tech }))}
-                    onChangeSize={(size: CustomTShirtState['size']) => setState((prev) => ({ ...prev, size }))}
+                    onChangeSize={(size: ShirtSize) => setState((prev) => ({ ...prev, size }))}
+                    onChangeSizeBreakdown={handleUpdateSizeBreakdown}
+                  />
+                ) : (
+                  <DesignUploadPanel
+                    state={state}
+                    printZones={db.printZones}
+                    onUpdateDesign={handleUpdateDesign}
                   />
                 )}
               </div>
             </div>
 
             {/* ===== MOBILE ACCORDION SECTIONS (hidden on desktop) ===== */}
-            {/* Upload & Sablon Collapsible */}
-            <div className="lg:hidden bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-              <button
-                onClick={() => toggleMobileSection('design')}
-                className="w-full flex items-center justify-between px-4 py-3 text-left"
-              >
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-sky-100 flex items-center justify-center">
-                    <Image className="w-4 h-4 text-sky-600" />
-                  </div>
-                  <div>
-                    <div className="text-sm font-bold text-slate-900">Upload & Sablon</div>
-                    <div className="text-[11px] text-slate-500">Upload gambar, atur zoom & posisi</div>
-                  </div>
-                </div>
-                <ChevronDown
-                  className={`w-5 h-5 text-slate-400 transition-transform duration-200 ${
-                    mobileOpenSection === 'design' ? 'rotate-180' : ''
-                  }`}
-                />
-              </button>
-              {mobileOpenSection === 'design' && (
-                <div className="px-4 pb-4 border-t border-slate-100">
-                  <div className="pt-3">
-                    <DesignUploadPanel
-                      state={state}
-                      onUpdateDesign={handleUpdateDesign}
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Spesifikasi Kaos Collapsible */}
+            {/* Spesifikasi Kaos Collapsible (Prioritas Pertama) */}
             <div className="lg:hidden bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
               <button
                 onClick={() => toggleMobileSection('config')}
@@ -484,9 +726,8 @@ export function App() {
                     {state.color.name}
                   </span>
                   <ChevronDown
-                    className={`w-5 h-5 text-slate-400 transition-transform duration-200 ${
-                      mobileOpenSection === 'config' ? 'rotate-180' : ''
-                    }`}
+                    className={`w-5 h-5 text-slate-400 transition-transform duration-200 ${mobileOpenSection === 'config' ? 'rotate-180' : ''
+                      }`}
                   />
                 </div>
               </button>
@@ -495,12 +736,49 @@ export function App() {
                   <div className="pt-3">
                     <ConfiguratorSidebar
                       state={state}
+                      materials={db.materials}
+                      techniques={db.techniques}
+                      colors={db.colors}
                       onChangeNeck={(neck: NeckType) => setState((prev) => ({ ...prev, neckType: neck }))}
                       onChangeSleeve={(sleeve: SleeveType) => setState((prev) => ({ ...prev, sleeveType: sleeve }))}
                       onChangeColor={(color: ShirtColor) => setState((prev) => ({ ...prev, color }))}
                       onChangeMaterial={(mat: MaterialOption) => setState((prev) => ({ ...prev, material: mat }))}
                       onChangeTechnique={(tech: PrintTechnique) => setState((prev) => ({ ...prev, technique: tech }))}
-                      onChangeSize={(size: CustomTShirtState['size']) => setState((prev) => ({ ...prev, size }))}
+                      onChangeSize={(size: ShirtSize) => setState((prev) => ({ ...prev, size }))}
+                      onChangeSizeBreakdown={handleUpdateSizeBreakdown}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Upload & Sablon Collapsible (Prioritas Kedua) */}
+            <div className="lg:hidden bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+              <button
+                onClick={() => toggleMobileSection('design')}
+                className="w-full flex items-center justify-between px-4 py-3 text-left"
+              >
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-sky-100 flex items-center justify-center">
+                    <Image className="w-4 h-4 text-sky-600" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-bold text-slate-900">Upload & Sablon</div>
+                    <div className="text-[11px] text-slate-500">Upload gambar, buat AI, atur zoom</div>
+                  </div>
+                </div>
+                <ChevronDown
+                  className={`w-5 h-5 text-slate-400 transition-transform duration-200 ${mobileOpenSection === 'design' ? 'rotate-180' : ''
+                    }`}
+                />
+              </button>
+              {mobileOpenSection === 'design' && (
+                <div className="px-4 pb-4 border-t border-slate-100">
+                  <div className="pt-3">
+                    <DesignUploadPanel
+                      state={state}
+                      printZones={db.printZones}
+                      onUpdateDesign={handleUpdateDesign}
                     />
                   </div>
                 </div>
@@ -510,11 +788,13 @@ export function App() {
         </div>
       </main>
 
-      {/* Sticky Bottom Pricing & Action Bar */}
+      {/* Sticky Bottom Pricing & Action Bar with dynamic printZones */}
       <PriceSummaryBar
         state={state}
-        onUpdateQuantity={(qty: number) => setState((prev) => ({ ...prev, quantity: qty }))}
+        printZones={db.printZones}
+        onUpdateQuantity={handleUpdateQuantityFromBar}
         onExportMockup={handleExportMockup}
+        onCaptureAllMockups={handleCaptureAllMockups}
       />
 
       {/* Success Notification Toast */}

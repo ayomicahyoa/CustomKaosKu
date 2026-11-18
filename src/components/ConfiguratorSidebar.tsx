@@ -6,30 +6,92 @@ import type {
   MaterialOption,
   ShirtColor,
   PrintTechnique,
+  ShirtSize,
 } from '../types';
 import { SHIRT_COLORS, MATERIALS, PRINT_TECHNIQUES } from '../data/mockData';
-import { Shirt, Palette, Layers, Printer, Check } from 'lucide-react';
+import { Shirt, Palette, Layers, Printer, Check, Minus, Plus } from 'lucide-react';
 
 interface ConfiguratorSidebarProps {
   state: CustomTShirtState;
+  materials?: MaterialOption[];
+  techniques?: PrintTechnique[];
+  colors?: ShirtColor[];
   onChangeNeck: (neck: NeckType) => void;
   onChangeSleeve: (sleeve: SleeveType) => void;
   onChangeColor: (color: ShirtColor) => void;
   onChangeMaterial: (mat: MaterialOption) => void;
   onChangeTechnique: (tech: PrintTechnique) => void;
-  onChangeSize: (size: CustomTShirtState['size']) => void;
+  onChangeSize: (size: ShirtSize) => void;
+  onChangeSizeBreakdown: (breakdown: Record<ShirtSize, number>) => void;
 }
 
 export const ConfiguratorSidebar: React.FC<ConfiguratorSidebarProps> = ({
   state,
+  materials = MATERIALS,
+  techniques = PRINT_TECHNIQUES,
+  colors = SHIRT_COLORS,
   onChangeNeck,
   onChangeSleeve,
   onChangeColor,
   onChangeMaterial,
   onChangeTechnique,
   onChangeSize,
+  onChangeSizeBreakdown,
 }) => {
-  const sizes: CustomTShirtState['size'][] = ['S', 'M', 'L', 'XL', 'XXL', '3XL'];
+  const sizes: ShirtSize[] = ['S', 'M', 'L', 'XL', 'XXL', '3XL'];
+
+  const currentBreakdown: Record<ShirtSize, number> = {
+    S: state.sizeBreakdown?.S ?? 0,
+    M: state.sizeBreakdown?.M ?? 0,
+    L: state.sizeBreakdown?.L ?? (state.quantity || 12),
+    XL: state.sizeBreakdown?.XL ?? 0,
+    XXL: state.sizeBreakdown?.XXL ?? 0,
+    '3XL': state.sizeBreakdown?.['3XL'] ?? 0,
+  };
+
+  const handleUpdateSizeQty = (size: ShirtSize, newQty: number) => {
+    const safeQty = Math.max(0, newQty);
+    const updated = { ...currentBreakdown, [size]: safeQty };
+    // Ensure at least 1 pcs total
+    const total = Object.values(updated).reduce((acc, v) => acc + v, 0);
+    if (total === 0) {
+      updated[size] = 1;
+    }
+    onChangeSize(size);
+    onChangeSizeBreakdown(updated);
+  };
+
+  const handleSelectSingleSizeAll = (size: ShirtSize) => {
+    const total = Math.max(1, state.quantity);
+    const updated: Record<ShirtSize, number> = {
+      S: 0,
+      M: 0,
+      L: 0,
+      XL: 0,
+      XXL: 0,
+      '3XL': 0,
+      [size]: total,
+    };
+    onChangeSize(size);
+    onChangeSizeBreakdown(updated);
+  };
+
+  const handleDistributeEvenly = () => {
+    const commonSizes: ShirtSize[] = ['S', 'M', 'L', 'XL'];
+    const total = Math.max(4, state.quantity);
+    const base = Math.floor(total / commonSizes.length);
+    const rem = total % commonSizes.length;
+
+    const updated: Record<ShirtSize, number> = {
+      S: base + (rem > 0 ? 1 : 0),
+      M: base + (rem > 1 ? 1 : 0),
+      L: base + (rem > 2 ? 1 : 0),
+      XL: base,
+      XXL: 0,
+      '3XL': 0,
+    };
+    onChangeSizeBreakdown(updated);
+  };
 
   return (
     <div className="space-y-6">
@@ -102,25 +164,88 @@ export const ConfiguratorSidebar: React.FC<ConfiguratorSidebarProps> = ({
           </div>
         </div>
 
-        {/* Ukuran (Sizes) */}
-        <div>
-          <label className="text-xs font-semibold text-slate-600 block mb-1.5">
-            Pilihan Size Kaos
-          </label>
-          <div className="grid grid-cols-6 gap-1.5">
-            {sizes.map((s) => (
+        {/* Ukuran (Sizes Matrix & Breakdown) */}
+        <div className="pt-1">
+          <div className="flex items-center justify-between mb-1.5">
+            <label className="text-xs font-semibold text-slate-700">
+              Distribusi Ukuran Kaos ({state.quantity} pcs)
+            </label>
+            <div className="flex items-center gap-1.5">
               <button
-                key={s}
-                onClick={() => onChangeSize(s)}
-                className={`py-1.5 rounded-lg border text-xs font-bold transition ${
-                  state.size === s
-                    ? 'border-slate-900 bg-slate-900 text-white shadow-xs'
-                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-400'
-                }`}
+                type="button"
+                onClick={handleDistributeEvenly}
+                className="text-[10px] text-sky-600 hover:text-sky-700 font-bold hover:underline"
               >
-                {s}
+                Bagi Rata (S-XL)
               </button>
-            ))}
+            </div>
+          </div>
+
+          <p className="text-[11px] text-slate-400 mb-2.5">
+            Tentukan jumlah pcs untuk masing-masing ukuran kaos yang dipesan:
+          </p>
+
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+            {sizes.map((s) => {
+              const qty = currentBreakdown[s] || 0;
+              const hasQty = qty > 0;
+              return (
+                <div
+                  key={s}
+                  className={`p-2 rounded-xl border flex flex-col items-center justify-between transition ${
+                    hasQty
+                      ? 'border-sky-500 bg-sky-50/50 shadow-2xs'
+                      : 'border-slate-200 bg-white hover:border-slate-300'
+                  }`}
+                >
+                  {/* Size Title (Click to make all quantity this size) */}
+                  <button
+                    type="button"
+                    onClick={() => handleSelectSingleSizeAll(s)}
+                    className="text-xs font-black text-slate-800 hover:text-sky-600 w-full text-center pb-1"
+                    title={`Klik untuk ubah semua (${state.quantity} pcs) ke ukuran ${s}`}
+                  >
+                    {s}
+                  </button>
+
+                  {/* Quantity Counter */}
+                  <div className="flex items-center gap-1 w-full justify-center">
+                    <button
+                      type="button"
+                      onClick={() => handleUpdateSizeQty(s, qty - 1)}
+                      className="w-5 h-5 rounded-md bg-white border border-slate-200 hover:bg-slate-100 flex items-center justify-center text-slate-600 transition"
+                    >
+                      <Minus className="w-2.5 h-2.5" />
+                    </button>
+                    <input
+                      type="number"
+                      min="0"
+                      value={qty}
+                      onChange={(e) => handleUpdateSizeQty(s, parseInt(e.target.value) || 0)}
+                      className="w-7 text-center font-bold text-xs font-mono bg-transparent border-none focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleUpdateSizeQty(s, qty + 1)}
+                      className="w-5 h-5 rounded-md bg-white border border-slate-200 hover:bg-slate-100 flex items-center justify-center text-slate-600 transition"
+                    >
+                      <Plus className="w-2.5 h-2.5" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Breakdown summary pill */}
+          <div className="mt-2.5 p-2 bg-slate-50 rounded-xl border border-slate-200/80 text-[11px] text-slate-600 flex items-center justify-between flex-wrap gap-1">
+            <span className="font-semibold text-slate-700">Rincian:</span>
+            <span className="font-mono text-slate-800 font-bold">
+              {Object.entries(currentBreakdown)
+                .filter(([, q]) => q > 0)
+                .map(([s, q]) => `${s}: ${q} pcs`)
+                .join(', ') || 'Belum ada ukuran'}
+            </span>
           </div>
         </div>
       </div>
@@ -138,7 +263,7 @@ export const ConfiguratorSidebar: React.FC<ConfiguratorSidebarProps> = ({
         </div>
 
         <div className="grid grid-cols-6 gap-2">
-          {SHIRT_COLORS.map((c) => {
+          {colors.map((c) => {
             const isSelected = state.color.id === c.id;
             return (
               <button
@@ -171,7 +296,7 @@ export const ConfiguratorSidebar: React.FC<ConfiguratorSidebarProps> = ({
         </div>
 
         <div className="space-y-2">
-          {MATERIALS.map((mat) => {
+          {materials.map((mat) => {
             const isSelected = state.material.id === mat.id;
             return (
               <button
@@ -221,7 +346,7 @@ export const ConfiguratorSidebar: React.FC<ConfiguratorSidebarProps> = ({
         </div>
 
         <div className="space-y-2">
-          {PRINT_TECHNIQUES.map((tech) => {
+          {techniques.map((tech) => {
             const isSelected = state.technique.id === tech.id;
             return (
               <button

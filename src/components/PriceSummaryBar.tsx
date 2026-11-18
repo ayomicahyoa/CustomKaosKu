@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
-import type { CustomTShirtState } from '../types';
+import type { CustomTShirtState, PrintZonePreset, ViewAngle } from '../types';
 import { PRINT_ZONE_PRESETS } from '../data/mockData';
+import { addOrder } from '../services/ordersStorage';
+import { imageUrlToDataUrl } from '../services/imageUtils';
+import { uploadOrderToDrive, isDriveConfigured } from '../services/driveUploader';
 import {
   Download,
   Share2,
@@ -10,22 +13,43 @@ import {
   CheckCircle,
   X,
   MessageSquare,
+  User,
+  MapPin,
+  FileEdit,
+  CheckCircle2,
+  ExternalLink,
+  Loader2,
 } from 'lucide-react';
 
 interface PriceSummaryBarProps {
   state: CustomTShirtState;
+  printZones?: PrintZonePreset[];
   onUpdateQuantity: (qty: number) => void;
   onExportMockup: () => void;
+  onCaptureAllMockups: () => Promise<{ primary: string; all: Record<ViewAngle, string> }>;
 }
 
 export const PriceSummaryBar: React.FC<PriceSummaryBarProps> = ({
   state,
+  printZones = PRINT_ZONE_PRESETS,
   onUpdateQuantity,
   onExportMockup,
+  onCaptureAllMockups,
 }) => {
   const [showSpecModal, setShowSpecModal] = useState(false);
   const [copiedWA, setCopiedWA] = useState(false);
   const [orderCode] = useState(() => 'CK' + Math.random().toString(36).substring(2, 8).toUpperCase());
+
+  // Customer Checkout & Shipping Info State
+  const [showOrderModal, setShowOrderModal] = useState(false);
+  const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [shippingCity, setShippingCity] = useState('');
+  const [shippingAddress, setShippingAddress] = useState('');
+  const [customerNotes, setCustomerNotes] = useState('');
+  const [orderSubmitted, setOrderSubmitted] = useState(false);
+  const [isProcessingOrder, setIsProcessingOrder] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState('');
 
   const targetWhatsAppNumber = '62895356338321';
 
@@ -39,7 +63,7 @@ export const PriceSummaryBar: React.FC<PriceSummaryBarProps> = ({
 
   Object.entries(state.designs).forEach(([view, design]) => {
     if (design) {
-      const preset = PRINT_ZONE_PRESETS.find((p) => p.id === design.zonePreset);
+      const preset = printZones.find((p) => p.id === design.zonePreset);
       const zoneCost = preset ? preset.cost : 15000;
       const techBase = state.technique.baseCost;
       const combinedZoneCost = zoneCost + techBase;
@@ -69,16 +93,36 @@ export const PriceSummaryBar: React.FC<PriceSummaryBarProps> = ({
   const finalUnitPrice = unitPriceBeforeDiscount - discountAmount;
   const grandTotal = finalUnitPrice * state.quantity;
 
-  // Generate WhatsApp order message
-  const generateWAMessage = () => {
+  const getSizeSummaryText = () => {
+    if (!state.sizeBreakdown) return `Size ${state.size} (${state.quantity} pcs)`;
+    const entries = Object.entries(state.sizeBreakdown).filter(([, q]) => Number(q) > 0);
+    if (entries.length === 0) return `Size ${state.size} (${state.quantity} pcs)`;
+    if (entries.length === 1) return `Size ${entries[0][0]} (${entries[0][1]} pcs)`;
+    return entries.map(([s, q]) => `${s}: ${q}`).join(', ') + ` (Total ${state.quantity} pcs)`;
+  };
+
+  // Generate WhatsApp order message with Customer Info
+  const generateWAMessage = (
+    name = customerName,
+    phone = customerPhone,
+    city = shippingCity,
+    address = shippingAddress,
+    notes = customerNotes
+  ) => {
     const text = `Saya mau order -> ini kode order yang sudah saya buat ${orderCode}, ditunggu konfirmasinya ya
 
 ---------------------------------------
-📋 *DETAIL ORDER (${orderCode})*
+👤 *DATA PEMESAN & PENGIRIMAN*
+• Nama Pemesan: ${name || 'Pelanggan'}
+• No. WhatsApp: ${phone || '-'}
+• Kota / Wilayah: ${city || '-'}
+• Alamat Lengkap: ${address || '-'}
+${notes ? `• Catatan Khusus: ${notes}\n` : ''}---------------------------------------
+📋 *DETAIL KAOS (${orderCode})*
 • Model: ${state.neckType === 'round' ? 'Round Neck (O-Neck)' : 'V-Neck'} (${state.sleeveType === 'short' ? 'Lengan Pendek' : 'Lengan Panjang'})
 • Warna: ${state.color.name}
 • Bahan: ${state.material.name} (${state.material.gsm})
-• Ukuran: ${state.size} | Qty: ${state.quantity} pcs
+• Rincian Ukuran: ${getSizeSummaryText()}
 • Teknik Sablon: ${state.technique.name}
 ${
   activePrintBreakdown.length > 0
@@ -92,7 +136,187 @@ ${
     return encodeURIComponent(text);
   };
 
+  const recordOrderSimple = () => {
+    addOrder({
+      id: orderCode,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      status: 'Waiting for Payment',
+      customerName: customerName || 'Pelanggan WhatsApp',
+      customerPhone: customerPhone || undefined,
+      shippingCity: shippingCity || undefined,
+      shippingAddress: shippingAddress || undefined,
+      customerNotes: customerNotes || undefined,
+      neckType: state.neckType,
+      sleeveType: state.sleeveType,
+      colorName: state.color.name,
+      colorHex: state.color.hex,
+      materialName: state.material.name,
+      materialGsm: state.material.gsm,
+      techniqueName: state.technique.name,
+      size: getSizeSummaryText(),
+      sizeBreakdown: state.sizeBreakdown,
+      quantity: state.quantity,
+      printBreakdown: activePrintBreakdown,
+      unitPrice: finalUnitPrice,
+      discountPercent: discountPercent,
+      grandTotal: grandTotal,
+    });
+  };
+
+  const generateOrderDetailsText = () => {
+    return `DETAIL PESANAN CUSTOM KAOS
+=====================================
+Kode Order: ${orderCode}
+Tanggal: ${new Date().toLocaleString('id-ID')}
+
+DATA PEMESAN:
+- Nama: ${customerName || 'Pelanggan'}
+- No. WhatsApp: ${customerPhone || '-'}
+- Kota: ${shippingCity || '-'}
+- Alamat: ${shippingAddress || '-'}
+- Catatan: ${customerNotes || '-'}
+
+SPESIFIKASI KAOS:
+- Model: ${state.neckType === 'round' ? 'Round Neck' : 'V-Neck'} (${state.sleeveType === 'short' ? 'Lengan Pendek' : 'Lengan Panjang'})
+- Warna: ${state.color.name} (${state.color.hex})
+- Bahan: ${state.material.name} (${state.material.gsm})
+- Ukuran: ${getSizeSummaryText()}
+- Jumlah: ${state.quantity} pcs
+- Teknik Sablon: ${state.technique.name}
+
+AREA CETAK:
+${activePrintBreakdown.length > 0 ? activePrintBreakdown.map(p => `- ${p.placement}: ${p.name} (Rp ${p.cost.toLocaleString('id-ID')})`).join('\n') : '- Polos (tanpa sablon)'}
+
+RINCIAN BIAYA:
+- Harga Satuan: Rp ${finalUnitPrice.toLocaleString('id-ID')}
+- Diskon: ${discountPercent}%
+- Grand Total: Rp ${grandTotal.toLocaleString('id-ID')}
+=====================================`;
+  };
+
+  const handleSubmitOrderForm = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customerName.trim() || !customerPhone.trim() || !shippingAddress.trim()) {
+      alert('Mohon lengkapi Nama, No. WhatsApp, dan Alamat Pengiriman.');
+      return;
+    }
+
+    // Pre-open window immediately during user click event to bypass browser popup blockers!
+    const waWindow = window.open('about:blank', '_blank');
+
+    setIsProcessingOrder(true);
+    setUploadStatus('Membuat preview mockup semua sisi...');
+
+    try {
+      // 1. Capture mockup previews for all sides (front, back, sleeve-left, sleeve-right)
+      let mockupPreview: string | undefined;
+      let mockupPreviews: Partial<Record<ViewAngle, string>> | undefined;
+      try {
+        const captured = await onCaptureAllMockups();
+        mockupPreview = captured.primary;
+        mockupPreviews = captured.all;
+      } catch (err) {
+        console.warn('Gagal capture mockup previews:', err);
+      }
+
+      // 2. Capture design files as base64
+      setUploadStatus('Memproses file desain...');
+      const designFilesList: { fileName: string; dataUrl: string; view: ViewAngle }[] = [];
+      for (const [view, design] of Object.entries(state.designs)) {
+        if (design) {
+          try {
+            const dataUrl = await imageUrlToDataUrl(design.imageUrl);
+            designFilesList.push({ fileName: design.fileName, dataUrl, view: view as ViewAngle });
+          } catch (err) {
+            console.warn(`Gagal convert design ${view}:`, err);
+          }
+        }
+      }
+
+      // 3. Upload to Google Drive (if configured)
+      let driveFolderUrl: string | undefined;
+      if (isDriveConfigured()) {
+        setUploadStatus('Mengupload ke Google Drive...');
+        const result = await uploadOrderToDrive({
+          orderId: orderCode,
+          orderDetails: generateOrderDetailsText(),
+          mockupPreview,
+          mockupPreviews: mockupPreviews
+            ? Object.entries(mockupPreviews).map(([v, dataUrl]) => ({ view: v, dataUrl: dataUrl! }))
+            : undefined,
+          designFiles: designFilesList,
+        });
+        if (result.success && result.folderUrl) {
+          driveFolderUrl = result.folderUrl;
+        } else {
+          console.warn('Drive upload warning:', result.error);
+        }
+      }
+
+      // 4. Record order to localStorage (with images + drive link)
+      addOrder({
+        id: orderCode,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        status: 'Waiting for Payment',
+        customerName: customerName || 'Pelanggan WhatsApp',
+        customerPhone: customerPhone || undefined,
+        shippingCity: shippingCity || undefined,
+        shippingAddress: shippingAddress || undefined,
+        customerNotes: customerNotes || undefined,
+        neckType: state.neckType,
+        sleeveType: state.sleeveType,
+        colorName: state.color.name,
+        colorHex: state.color.hex,
+        materialName: state.material.name,
+        materialGsm: state.material.gsm,
+        techniqueName: state.technique.name,
+        size: getSizeSummaryText(),
+        sizeBreakdown: state.sizeBreakdown,
+        quantity: state.quantity,
+        printBreakdown: activePrintBreakdown,
+        unitPrice: finalUnitPrice,
+        discountPercent: discountPercent,
+        grandTotal: grandTotal,
+        mockupPreview,
+        mockupPreviews,
+        designFiles: designFilesList,
+        driveFolderUrl,
+      });
+
+      // 5. Navigate the pre-opened tab to WhatsApp
+      const waText = generateWAMessage(customerName, customerPhone, shippingCity, shippingAddress, customerNotes);
+      const waUrl = `https://wa.me/${targetWhatsAppNumber}?text=${waText}`;
+
+      if (waWindow && !waWindow.closed) {
+        waWindow.location.href = waUrl;
+      } else {
+        // Fallback
+        window.open(waUrl, '_blank');
+      }
+
+      setOrderSubmitted(true);
+      setShowOrderModal(false);
+
+      // 6. Smooth redirect to tracking page with order ID
+      setTimeout(() => {
+        window.location.hash = `/cekorderan?id=${orderCode}`;
+      }, 200);
+    } catch (err) {
+      if (waWindow && !waWindow.closed) {
+        waWindow.close();
+      }
+      console.error('Order processing error:', err);
+      alert('Terjadi error saat memproses pesanan. Silakan coba lagi.');
+    } finally {
+      setIsProcessingOrder(false);
+      setUploadStatus('');
+    }
+  };
+
   const handleCopySpecs = () => {
+    recordOrderSimple();
     const rawText = decodeURIComponent(generateWAMessage());
     navigator.clipboard.writeText(rawText);
     setCopiedWA(true);
@@ -184,17 +408,17 @@ ${
               <span className="sm:hidden">Save</span>
             </button>
 
-            {/* WhatsApp Order */}
-            <a
-              href={`https://wa.me/${targetWhatsAppNumber}?text=${generateWAMessage()}`}
-              target="_blank"
-              rel="noopener noreferrer"
+            {/* Order Now Button with Customer Info Modal */}
+            <button
+              onClick={() => {
+                setOrderSubmitted(false);
+                setShowOrderModal(true);
+              }}
               className="flex-1 md:flex-initial flex items-center justify-center gap-1 sm:gap-1.5 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] sm:text-xs font-bold shadow-md shadow-emerald-600/20 transition cursor-pointer"
             >
               <MessageSquare className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              <span className="hidden sm:inline">Order via WhatsApp</span>
-              <span className="sm:hidden">WhatsApp</span>
-            </a>
+              <span>Order Now</span>
+            </button>
           </div>
         </div>
       </footer>
@@ -239,7 +463,7 @@ ${
                 </div>
                 <div className="flex justify-between text-slate-600">
                   <span>Warna: {state.color.name}</span>
-                  <span className="font-mono">Size: {state.size}</span>
+                  <span className="font-mono text-slate-800 font-semibold">{getSizeSummaryText()}</span>
                 </div>
               </div>
 
@@ -306,6 +530,218 @@ ${
                 Tutup
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Customer Checkout & Shipping Address Modal */}
+      {showOrderModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-3 sm:p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full p-5 sm:p-6 border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div>
+                <span className="text-[10px] uppercase font-bold text-slate-400">Checkout Custom Kaos</span>
+                <h3 className="text-base font-bold text-slate-900">
+                  Data Pemesan & Pengiriman
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowOrderModal(false)}
+                className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 hover:bg-slate-200 transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {!orderSubmitted ? (
+              <form onSubmit={handleSubmitOrderForm} className="space-y-4 text-xs">
+                {/* Order Summary Strip */}
+                <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-150 space-y-1.5 text-slate-700">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-[11px] font-bold text-slate-500">
+                      KODE: <strong className="text-sky-700 font-mono">{orderCode}</strong>
+                    </span>
+                    <span className="font-mono font-bold text-sky-700 text-sm">
+                      Rp {grandTotal.toLocaleString('id-ID')}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-slate-600 flex items-center gap-1.5 flex-wrap">
+                    <span
+                      className="w-2.5 h-2.5 rounded-full border border-slate-300"
+                      style={{ backgroundColor: state.color.hex }}
+                    />
+                    <span>{state.color.name}</span>
+                    <span>•</span>
+                    <span>{state.material.name}</span>
+                    <span>•</span>
+                    <span>{getSizeSummaryText()}</span>
+                  </div>
+                </div>
+
+                {/* Data Pemesan */}
+                <div className="space-y-3">
+                  <div className="font-bold text-slate-800 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5 text-sky-500" />
+                    <span>Identitas Pemesan</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="font-semibold text-slate-700 block mb-1">
+                        Nama Lengkap / Instansi <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={customerName}
+                        onChange={(e) => setCustomerName(e.target.value)}
+                        placeholder="Contoh: Budi Santoso / PT. ABC"
+                        className="w-full p-2.5 rounded-xl border border-slate-300 bg-white focus:outline-none focus:border-slate-900 transition"
+                      />
+                    </div>
+                    <div>
+                      <label className="font-semibold text-slate-700 block mb-1">
+                        Nomor WhatsApp / HP <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="tel"
+                        required
+                        value={customerPhone}
+                        onChange={(e) => setCustomerPhone(e.target.value)}
+                        placeholder="Contoh: 081234567890"
+                        className="w-full p-2.5 rounded-xl border border-slate-300 bg-white focus:outline-none focus:border-slate-900 transition font-mono"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Alamat Pengiriman */}
+                <div className="space-y-3 pt-1">
+                  <div className="font-bold text-slate-800 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+                    <MapPin className="w-3.5 h-3.5 text-emerald-500" />
+                    <span>Alamat Pengiriman</span>
+                  </div>
+
+                  <div>
+                    <label className="font-semibold text-slate-700 block mb-1">
+                      Kota / Kabupaten & Provinsi <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={shippingCity}
+                      onChange={(e) => setShippingCity(e.target.value)}
+                      placeholder="Contoh: Kota Bandung, Jawa Barat"
+                      className="w-full p-2.5 rounded-xl border border-slate-300 bg-white focus:outline-none focus:border-slate-900 transition"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-semibold text-slate-700 block mb-1">
+                      Alamat Lengkap (Jalan, RT/RW, Kelurahan, Kecamatan, Kodepos) <span className="text-rose-500">*</span>
+                    </label>
+                    <textarea
+                      rows={2}
+                      required
+                      value={shippingAddress}
+                      onChange={(e) => setShippingAddress(e.target.value)}
+                      placeholder="Contoh: Jl. Riau No. 45, RT 02/RW 04, Citarum, Kec. Bandung Wetan, 40115"
+                      className="w-full p-2.5 rounded-xl border border-slate-300 bg-white focus:outline-none focus:border-slate-900 transition resize-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Catatan Tambahan */}
+                <div className="space-y-2 pt-1">
+                  <div className="font-bold text-slate-800 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+                    <FileEdit className="w-3.5 h-3.5 text-amber-500" />
+                    <span>Catatan Khusus Sablon / Produksi (Opsional)</span>
+                  </div>
+                  <textarea
+                    rows={2}
+                    value={customerNotes}
+                    onChange={(e) => setCustomerNotes(e.target.value)}
+                    placeholder="Contoh: Mohon warna sablon presisi seperti mockup, packing plastik opp per pcs, deadline tgl 25..."
+                    className="w-full p-2.5 rounded-xl border border-slate-300 bg-white focus:outline-none focus:border-slate-900 transition resize-none"
+                  />
+                </div>
+
+                {/* Submit to WA */}
+                <div className="pt-2 border-t border-slate-100 flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowOrderModal(false)}
+                    disabled={isProcessingOrder}
+                    className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50 transition disabled:opacity-50"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isProcessingOrder}
+                    className={`flex-2 py-3 px-4 rounded-xl text-white font-bold transition shadow-md shadow-emerald-600/20 flex items-center justify-center gap-2 ${
+                      isProcessingOrder
+                        ? 'bg-slate-400 cursor-not-allowed'
+                        : 'bg-emerald-600 hover:bg-emerald-700 cursor-pointer'
+                    }`}
+                  >
+                    {isProcessingOrder ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>{uploadStatus || 'Memproses...'}</span>
+                      </>
+                    ) : (
+                      <>
+                        <MessageSquare className="w-4 h-4" />
+                        <span>Kirim Pesanan ke WhatsApp</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            ) : (
+              /* Success / Next Step Screen */
+              <div className="py-4 text-center space-y-4">
+                <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-sm">
+                  <CheckCircle2 className="w-8 h-8" />
+                </div>
+                <div>
+                  <h4 className="text-base font-bold text-slate-900">
+                    Pesanan Berhasil Dicatat!
+                  </h4>
+                  <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
+                    Data order telah tersimpan di sistem antrian kami dan jendela WhatsApp telah dibuka untuk konfirmasi ke vendor.
+                  </p>
+                </div>
+
+                <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 max-w-xs mx-auto text-center">
+                  <div className="text-[10px] uppercase font-bold text-slate-400">Kode Pelacakan Order</div>
+                  <div className="text-lg font-mono font-extrabold text-sky-700 tracking-wider mt-0.5">
+                    {orderCode}
+                  </div>
+                </div>
+
+                <div className="pt-2 flex flex-col gap-2">
+                  <button
+                    onClick={() => {
+                      setShowOrderModal(false);
+                      window.location.hash = '/cekorderan';
+                    }}
+                    className="w-full py-3 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center justify-center gap-2 transition shadow-xs"
+                  >
+                    <ExternalLink className="w-4 h-4 text-sky-400" />
+                    <span>Lacak Status Pesanan Ini Sekarang</span>
+                  </button>
+                  <button
+                    onClick={() => setShowOrderModal(false)}
+                    className="w-full py-2.5 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-semibold transition"
+                  >
+                    Tutup & Lanjut Desain
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

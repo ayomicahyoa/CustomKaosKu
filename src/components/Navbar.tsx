@@ -1,11 +1,12 @@
 import React from 'react';
-import { Shirt, Sparkles, RefreshCcw, Layers } from 'lucide-react';
+import { Shirt, Package } from 'lucide-react';
 
 interface NavbarProps {
-  onReset: () => void;
+  onReset?: () => void;
+  onNavigateToTracking?: () => void;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onReset }) => {
+export const Navbar: React.FC<NavbarProps> = ({ onNavigateToTracking }) => {
   return (
     <header className="sticky top-0 z-30 bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 lg:px-8 py-3">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -29,27 +30,16 @@ export const Navbar: React.FC<NavbarProps> = ({ onReset }) => {
           </div>
         </div>
 
-        {/* Badges / Tech Highlights */}
-        <div className="hidden md:flex items-center gap-2 text-xs">
-          <span className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-medium">
-            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-            DTF, Polyflex & Sablon Manual
-          </span>
-          <span className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 font-medium">
-            <Layers className="w-3.5 h-3.5 text-sky-500" />
-            Multi-Angle View
-          </span>
-        </div>
-
         {/* Action Button */}
         <div className="flex items-center gap-2">
+          {/* Cek Pesanan Pelanggan */}
           <button
-            onClick={onReset}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100 text-xs font-semibold transition"
-            title="Reset ke pengaturan awal"
+            onClick={onNavigateToTracking || (() => { window.location.hash = '/cekorderan'; })}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 text-white hover:bg-slate-800 text-xs font-bold transition shadow-xs cursor-pointer"
+            title="Lacak status pesanan kaos Anda"
           >
-            <RefreshCcw className="w-3.5 h-3.5 text-slate-400" />
-            <span className="hidden sm:inline">Reset Desain</span>
+            <Package className="w-3.5 h-3.5 text-sky-400" />
+            <span>Cek Pesanan</span>
           </button>
         </div>
       </div>
