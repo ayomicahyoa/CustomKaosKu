@@ -71,6 +71,7 @@ export interface PlacedDesign {
   wrinkleIntensity?: number; // 0 to 1 (default 0.92)
   blendMode?: 'normal' | 'multiply';
   cornerRadius?: number; // 0 to 24px
+  isAutoAdjusted?: boolean;
 }
 
 export type ShirtSize = 'S' | 'M' | 'L' | 'XL' | 'XXL' | '3XL';
@@ -133,6 +134,14 @@ export interface CustomerOrder {
   discountPercent: number;
   grandTotal: number;
 
+  // Payment Scheme (DP 50% vs Lunas)
+  paymentType?: 'dp_50' | 'full';
+  dpAmount?: number;
+  remainingAmount?: number;
+  dpPaidAt?: string;
+  settlementPaidAt?: string;
+  paymentProofUrl?: string;
+
   // Mockup preview thumbnail (base64 JPEG data URL, compressed ~600px wide)
   mockupPreview?: string;
 
@@ -149,8 +158,51 @@ export interface CustomerOrder {
   // Google Drive folder URL (created by Apps Script)
   driveFolderUrl?: string;
 
+  // User & Authentication (Optional for Guest)
+  userId?: string;
+  userEmail?: string;
+
+  // Multi-item cart support
+  items?: CartItem[];
+
   // Legacy field (kept for backward compat)
   previewImage?: string;
 }
+
+export interface CartItem {
+  id: string; // e.g. "ITEM-171829..."
+  createdAt: string;
+  neckType: NeckType;
+  sleeveType: SleeveType;
+  colorName: string;
+  colorHex: string;
+  materialName: string;
+  materialGsm?: string;
+  techniqueName: string;
+  size: string;
+  sizeBreakdown?: Partial<Record<ShirtSize, number>>;
+  quantity: number;
+  printBreakdown: {
+    placement: string;
+    name: string;
+    cost: number;
+  }[];
+  unitPrice: number;
+  discountPercent: number;
+  subtotal: number;
+  mockupPreview?: string;
+  mockupPreviews?: Partial<Record<ViewAngle, string>>;
+  designs?: CustomTShirtState['designs'];
+}
+
+export interface AppUser {
+  id: string;
+  email: string;
+  fullName?: string;
+  phone?: string;
+  avatarUrl?: string;
+  createdAt?: string;
+}
+
 
 

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type {
   CustomTShirtState,
   NeckType,
@@ -9,7 +9,8 @@ import type {
   ShirtSize,
 } from '../types';
 import { SHIRT_COLORS, MATERIALS, PRINT_TECHNIQUES } from '../data/mockData';
-import { Shirt, Palette, Layers, Printer, Check, Minus, Plus } from 'lucide-react';
+import { Shirt, Palette, Layers, Printer, Check, Minus, Plus, Ruler } from 'lucide-react';
+import { SizeGuideModal } from './SizeGuideModal';
 
 interface ConfiguratorSidebarProps {
   state: CustomTShirtState;
@@ -38,6 +39,7 @@ export const ConfiguratorSidebar: React.FC<ConfiguratorSidebarProps> = ({
   onChangeSize,
   onChangeSizeBreakdown,
 }) => {
+  const [isSizeGuideOpen, setIsSizeGuideOpen] = useState(false);
   const sizes: ShirtSize[] = ['S', 'M', 'L', 'XL', 'XXL', '3XL'];
 
   const currentBreakdown: Record<ShirtSize, number> = {
@@ -170,7 +172,17 @@ export const ConfiguratorSidebar: React.FC<ConfiguratorSidebarProps> = ({
             <label className="text-xs font-semibold text-slate-700">
               Distribusi Ukuran Kaos ({state.quantity} pcs)
             </label>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsSizeGuideOpen(true)}
+                className="text-[10px] text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-1 hover:underline"
+                title="Buka panduan ukuran & kalkulator BB/TB"
+              >
+                <Ruler className="w-3 h-3" />
+                <span>Panduan Ukuran</span>
+              </button>
+              <span className="text-slate-300">•</span>
               <button
                 type="button"
                 onClick={handleDistributeEvenly}
@@ -375,6 +387,17 @@ export const ConfiguratorSidebar: React.FC<ConfiguratorSidebarProps> = ({
           })}
         </div>
       </div>
+
+      {/* Size Guide & BB/TB Calculator Modal */}
+      <SizeGuideModal
+        isOpen={isSizeGuideOpen}
+        onClose={() => setIsSizeGuideOpen(false)}
+        currentSize={state.size}
+        onSelectSize={(selectedSize) => {
+          onChangeSize(selectedSize);
+          handleUpdateSizeQty(selectedSize, (currentBreakdown[selectedSize] || 0) + 1);
+        }}
+      />
     </div>
   );
 };

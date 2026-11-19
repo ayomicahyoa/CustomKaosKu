@@ -120,6 +120,35 @@ function mapRowToOrder(row: Record<string, unknown>): CustomerOrder {
     }
   }
 
+  // Parse payment metadata if encoded in admin_notes or direct columns
+  let paymentType: 'dp_50' | 'full' = (row.payment_type as 'dp_50' | 'full') || 'dp_50';
+  let dpAmount = row.dp_amount !== undefined && row.dp_amount !== null ? Number(row.dp_amount) : undefined;
+  let remainingAmount = row.remaining_amount !== undefined && row.remaining_amount !== null ? Number(row.remaining_amount) : undefined;
+  let dpPaidAt = row.dp_paid_at ? String(row.dp_paid_at) : undefined;
+  let settlementPaidAt = row.settlement_paid_at ? String(row.settlement_paid_at) : undefined;
+  let items: CustomerOrder['items'] = undefined;
+  let userId: string | undefined = row.user_id ? String(row.user_id) : undefined;
+  let userEmail: string | undefined = row.user_email ? String(row.user_email) : undefined;
+
+  let cleanAdminNotes = row.admin_notes ? String(row.admin_notes) : undefined;
+  if (cleanAdminNotes && cleanAdminNotes.includes('__PAYMENT_META__:')) {
+    try {
+      const parts = cleanAdminNotes.split('__PAYMENT_META__:');
+      cleanAdminNotes = parts[0].trim() || undefined;
+      const meta = JSON.parse(parts[1]);
+      if (meta.paymentType) paymentType = meta.paymentType;
+      if (meta.dpAmount !== undefined) dpAmount = meta.dpAmount;
+      if (meta.remainingAmount !== undefined) remainingAmount = meta.remainingAmount;
+      if (meta.dpPaidAt) dpPaidAt = meta.dpPaidAt;
+      if (meta.settlementPaidAt) settlementPaidAt = meta.settlementPaidAt;
+      if (meta.items) items = meta.items;
+      if (meta.userId) userId = meta.userId;
+      if (meta.userEmail) userEmail = meta.userEmail;
+    } catch {
+      // ignore parsing error
+    }
+  }
+
   return {
     id: String(row.id),
     createdAt: String(row.created_at || new Date().toISOString()),
@@ -132,7 +161,7 @@ function mapRowToOrder(row: Record<string, unknown>): CustomerOrder {
     customerNotes: row.customer_notes ? String(row.customer_notes) : undefined,
     trackingNumber: row.tracking_number ? String(row.tracking_number) : undefined,
     courier: row.courier ? String(row.courier) : undefined,
-    adminNotes: row.admin_notes ? String(row.admin_notes) : undefined,
+    adminNotes: cleanAdminNotes,
     neckType: (row.neck_type as CustomerOrder['neckType']) || 'round',
     sleeveType: (row.sleeve_type as CustomerOrder['sleeveType']) || 'short',
     colorName: String(row.color_name || 'Hitam'),
@@ -146,6 +175,14 @@ function mapRowToOrder(row: Record<string, unknown>): CustomerOrder {
     unitPrice: Number(row.unit_price || 0),
     discountPercent: Number(row.discount_percent || 0),
     grandTotal: Number(row.grand_total || 0),
+    paymentType,
+    dpAmount,
+    remainingAmount,
+    dpPaidAt,
+    settlementPaidAt,
+    items,
+    userId,
+    userEmail,
     mockupPreview: parsedPreview,
     mockupPreviews: parsedPreviews,
     driveFolderUrl: row.drive_folder_url ? String(row.drive_folder_url) : undefined,
@@ -160,6 +197,23 @@ function mapOrderToRow(order: CustomerOrder) {
     previewToSave = order.mockupPreview;
   }
 
+  // Encode payment metadata safely inside admin_notes to ensure compatibility
+  // with Supabase even if the database has not yet run the ALTER TABLE migrations
+  const paymentMeta = {
+    paymentType: order.paymentType || 'dp_50',
+    dpAmount: order.dpAmount ?? Math.round(order.grandTotal * 0.5),
+    remainingAmount: order.remainingAmount ?? (order.grandTotal - Math.round(order.grandTotal * 0.5)),
+    dpPaidAt: order.dpPaidAt,
+    settlementPaidAt: order.settlementPaidAt,
+    items: order.items,
+    userId: order.userId,
+    userEmail: order.userEmail,
+  };
+  const baseAdminNotes = order.adminNotes ? order.adminNotes.replace(/__PAYMENT_META__:.*$/, '').trim() : '';
+  const combinedAdminNotes = baseAdminNotes
+    ? `${baseAdminNotes} __PAYMENT_META__:${JSON.stringify(paymentMeta)}`
+    : `__PAYMENT_META__:${JSON.stringify(paymentMeta)}`;
+
   return {
     id: order.id,
     created_at: order.createdAt,
@@ -172,7 +226,7 @@ function mapOrderToRow(order: CustomerOrder) {
     customer_notes: order.customerNotes || null,
     tracking_number: order.trackingNumber || null,
     courier: order.courier || null,
-    admin_notes: order.adminNotes || null,
+    admin_notes: combinedAdminNotes,
     neck_type: order.neckType,
     sleeve_type: order.sleeveType,
     color_name: order.colorName,
@@ -239,6 +293,8 @@ export async function updateOrderStatusInSupabase(
     trackingNumber?: string;
     courier?: string;
     adminNotes?: string;
+    dpPaidAt?: string;
+    settlementPaidAt?: string;
   }
 ): Promise<boolean> {
   const sb = getSupabase();
@@ -251,7 +307,23 @@ export async function updateOrderStatusInSupabase(
     };
     if (options?.trackingNumber !== undefined) updatePayload.tracking_number = options.trackingNumber;
     if (options?.courier !== undefined) updatePayload.courier = options.courier;
-    if (options?.adminNotes !== undefined) updatePayload.admin_notes = options.adminNotes;
+
+    if (options?.adminNotes !== undefined || options?.dpPaidAt !== undefined || options?.settlementPaidAt !== undefined) {
+      let baseNotes = options?.adminNotes ?? '';
+      let existingMeta: Record<string, unknown> = {};
+      if (baseNotes.includes('__PAYMENT_META__:')) {
+        const parts = baseNotes.split('__PAYMENT_META__:');
+        baseNotes = parts[0].trim();
+        try { existingMeta = JSON.parse(parts[1].trim()); } catch {}
+      }
+      if (options?.dpPaidAt !== undefined) existingMeta.dpPaidAt = options.dpPaidAt;
+      if (options?.settlementPaidAt !== undefined) existingMeta.settlementPaidAt = options.settlementPaidAt;
+
+      const combinedNotes = baseNotes
+        ? `${baseNotes} __PAYMENT_META__:${JSON.stringify(existingMeta)}`
+        : `__PAYMENT_META__:${JSON.stringify(existingMeta)}`;
+      updatePayload.admin_notes = combinedNotes;
+    }
 
     const { error } = await sb
       .from('customer_orders')

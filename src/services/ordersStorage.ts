@@ -259,6 +259,8 @@ export const updateOrderStatus = (
     trackingNumber?: string;
     courier?: string;
     adminNotes?: string;
+    dpPaidAt?: string;
+    settlementPaidAt?: string;
   }
 ): CustomerOrder | null => {
   const currentOrders = loadOrders();
@@ -275,6 +277,8 @@ export const updateOrderStatus = (
     ...(options?.trackingNumber !== undefined ? { trackingNumber: options.trackingNumber } : {}),
     ...(options?.courier !== undefined ? { courier: options.courier } : {}),
     ...(options?.adminNotes !== undefined ? { adminNotes: options.adminNotes } : {}),
+    ...(options?.dpPaidAt !== undefined ? { dpPaidAt: options.dpPaidAt } : {}),
+    ...(options?.settlementPaidAt !== undefined ? { settlementPaidAt: options.settlementPaidAt } : {}),
   };
 
   currentOrders[idx] = updatedOrder;
@@ -311,6 +315,22 @@ export const deleteOrder = (orderId: string): void => {
       console.warn('Async cloud delete order failed:', err);
     });
   }
+};
+
+export const getOrdersForUser = (userId: string, userEmail?: string, userPhone?: string): CustomerOrder[] => {
+  const allOrders = loadOrders();
+  const cleanEmail = userEmail?.trim().toLowerCase();
+  const cleanPhone = userPhone?.trim().replace(/[^0-9]/g, '');
+
+  return allOrders.filter((order) => {
+    if (order.userId && order.userId === userId) return true;
+    if (cleanEmail && order.userEmail && order.userEmail.toLowerCase() === cleanEmail) return true;
+    if (cleanPhone && order.customerPhone) {
+      const orderPhone = order.customerPhone.replace(/[^0-9]/g, '');
+      if (orderPhone.length >= 8 && cleanPhone.endsWith(orderPhone.slice(-8))) return true;
+    }
+    return false;
+  });
 };
 
 export const resetOrdersToDefault = (): CustomerOrder[] => {

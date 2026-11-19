@@ -14,9 +14,14 @@ import {
   Info,
   MapPin,
   Eye,
+  CreditCard,
+  Banknote,
+  Printer,
 } from 'lucide-react';
-import type { CustomerOrder, OrderStatus, ViewAngle } from '../types';
+import type { CustomerOrder, OrderStatus, ViewAngle, CartItem } from '../types';
 import { getOrderById, loadOrders, syncOrdersFromCloud } from '../services/ordersStorage';
+import { getBankAccounts } from '../services/bankConfig';
+import { printInvoiceDocument } from '../services/invoiceGenerator';
 
 interface OrderTrackingPageProps {
   initialOrderId?: string;
@@ -48,8 +53,17 @@ export const OrderTrackingPage: React.FC<OrderTrackingPageProps> = ({
   const [foundOrder, setFoundOrder] = useState<CustomerOrder | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
   const [copiedResi, setCopiedResi] = useState(false);
+  const [copiedBank, setCopiedBank] = useState<string | null>(null);
   const [recentOrders, setRecentOrders] = useState<CustomerOrder[]>([]);
   const [activeAngle, setActiveAngle] = useState<ViewAngle>('front');
+
+  const bankAccounts = getBankAccounts();
+
+  const handleCopyBank = (accNo: string) => {
+    navigator.clipboard.writeText(accNo);
+    setCopiedBank(accNo);
+    setTimeout(() => setCopiedBank(null), 2000);
+  };
 
   useEffect(() => {
     const all = loadOrders();
@@ -276,39 +290,134 @@ export const OrderTrackingPage: React.FC<OrderTrackingPageProps> = ({
                       </p>
                     </div>
 
-                    <div
-                      className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-bold ${badge.bg}`}
-                    >
-                      <span className={`w-2 h-2 rounded-full ${badge.dot} animate-pulse`} />
-                      <span>{badge.label}</span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const cartItems: CartItem[] =
+                            foundOrder.items && foundOrder.items.length > 0
+                              ? foundOrder.items
+                              : [
+                                  {
+                                    id: foundOrder.id,
+                                    neckType: foundOrder.neckType,
+                                    sleeveType: foundOrder.sleeveType,
+                                    colorName: foundOrder.colorName,
+                                    colorHex: foundOrder.colorHex,
+                                    materialName: foundOrder.materialName,
+                                    materialGsm: foundOrder.materialGsm,
+                                    techniqueName: foundOrder.techniqueName,
+                                    size: foundOrder.size,
+                                    sizeBreakdown: foundOrder.sizeBreakdown,
+                                    quantity: foundOrder.quantity,
+                                    unitPrice: foundOrder.unitPrice,
+                                    subtotal: foundOrder.grandTotal,
+                                    discountPercent: foundOrder.discountPercent || 0,
+                                    createdAt: foundOrder.createdAt,
+                                    printBreakdown: foundOrder.printBreakdown,
+                                    designs: {},
+                                  },
+                                ];
+
+                          printInvoiceDocument({
+                            orderCode: foundOrder.id,
+                            customerName: foundOrder.customerName,
+                            customerPhone: foundOrder.customerPhone,
+                            shippingCity: foundOrder.shippingCity,
+                            shippingAddress: foundOrder.shippingAddress,
+                            items: cartItems,
+                            rawSubtotal: foundOrder.grandTotal,
+                            grandTotal: foundOrder.grandTotal,
+                            paymentType: foundOrder.paymentType || 'dp_50',
+                            dpAmount:
+                              foundOrder.dpAmount || Math.round(foundOrder.grandTotal * 0.5),
+                            remainingAmount:
+                              foundOrder.remainingAmount ||
+                              (foundOrder.paymentType === 'full'
+                                ? 0
+                                : Math.round(foundOrder.grandTotal * 0.5)),
+                          });
+                        }}
+                        className="py-1.5 px-3 rounded-full border border-sky-300 text-sky-700 bg-sky-50 hover:bg-sky-100 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                        title="Cetak lembar invoice resmi atau simpan PDF"
+                      >
+                        <Printer className="w-3.5 h-3.5 text-sky-600" />
+                        <span>Cetak Invoice</span>
+                      </button>
+
+                      <div
+                        className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-bold ${badge.bg}`}
+                      >
+                        <span className={`w-2 h-2 rounded-full ${badge.dot} animate-pulse`} />
+                        <span>{badge.label}</span>
+                      </div>
                     </div>
                   </div>
 
-                  {/* WhatsApp Confirmation Banner */}
-                  {foundOrder.status === 'Waiting for Payment' && (
-                    <div className="p-3.5 sm:p-4 bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-transparent border border-emerald-200 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-emerald-950 shadow-2xs">
-                      <div className="flex items-center gap-3 w-full sm:w-auto">
-                        <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center flex-shrink-0 shadow-xs">
-                          <MessageSquare className="w-5 h-5" />
+                  {/* WhatsApp Confirmation Banner (Waiting for Payment) */}
+                  {foundOrder.status === 'Waiting for Payment' && (() => {
+                    const isDp = foundOrder.paymentType === 'dp_50' || !foundOrder.paymentType;
+                    const dueAmount = isDp ? (foundOrder.dpAmount || Math.round(foundOrder.grandTotal * 0.5)) : foundOrder.grandTotal;
+                    return (
+                      <div className="p-3.5 sm:p-4 bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-transparent border border-emerald-200 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-emerald-950 shadow-2xs">
+                        <div className="flex items-center gap-3 w-full sm:w-auto">
+                          <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center flex-shrink-0 shadow-xs">
+                            <MessageSquare className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <div className="font-bold text-xs sm:text-sm">Konfirmasi Pembayaran ({isDp ? 'DP 50%' : 'Lunas'})</div>
+                            <p className="text-[11px] text-emerald-700">
+                              Nominal transfer: <strong>Rp {dueAmount.toLocaleString('id-ID')}</strong>. Kirim bukti transfer ke WhatsApp admin.
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <div className="font-bold text-xs sm:text-sm">Konfirmasi Pesanan ke WhatsApp Vendor</div>
-                          <p className="text-[11px] text-emerald-700">Kirim format rincian order ke WhatsApp admin untuk verifikasi pembayaran & DP.</p>
-                        </div>
+                        <a
+                          href={`https://wa.me/62895356338321?text=${encodeURIComponent(
+                            `Saya mau konfirmasi order -> ini kode order yang sudah saya buat ${foundOrder.id}, ditunggu konfirmasinya ya\n\n• Nama: ${foundOrder.customerName || 'Pelanggan'}\n• Total: Rp ${foundOrder.grandTotal.toLocaleString('id-ID')}\n• Pembayaran: ${isDp ? `DP 50% (Rp ${dueAmount.toLocaleString('id-ID')})` : `Lunas (Rp ${dueAmount.toLocaleString('id-ID')})`}\n• Ukuran: ${foundOrder.size}`
+                          )}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-full sm:w-auto py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition whitespace-nowrap flex items-center justify-center gap-1.5"
+                        >
+                          <MessageSquare className="w-4 h-4" />
+                          <span>Kirim Bukti Pembayaran via WA</span>
+                        </a>
                       </div>
-                      <a
-                        href={`https://wa.me/62895356338321?text=${encodeURIComponent(
-                          `Saya mau konfirmasi order -> ini kode order yang sudah saya buat ${foundOrder.id}, ditunggu konfirmasinya ya\n\n• Nama: ${foundOrder.customerName || 'Pelanggan'}\n• Total: Rp ${foundOrder.grandTotal.toLocaleString('id-ID')}\n• Ukuran: ${foundOrder.size}`
-                        )}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="w-full sm:w-auto py-2.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-xs transition whitespace-nowrap flex items-center justify-center gap-1.5"
-                      >
-                        <MessageSquare className="w-4 h-4" />
-                        <span>Kirim Chat ke WhatsApp</span>
-                      </a>
-                    </div>
-                  )}
+                    );
+                  })()}
+
+                  {/* Ready to Send - Pelunasan Banner */}
+                  {foundOrder.status === 'Ready to send' && !foundOrder.settlementPaidAt && (foundOrder.paymentType === 'dp_50' || !foundOrder.paymentType || (foundOrder.remainingAmount && foundOrder.remainingAmount > 0)) && (() => {
+                    const remaining = foundOrder.remainingAmount || (foundOrder.grandTotal - (foundOrder.dpAmount || Math.round(foundOrder.grandTotal * 0.5)));
+                    return (
+                      <div className="p-4 bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-transparent border border-amber-300 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-amber-950 shadow-2xs">
+                        <div className="flex items-center gap-3 w-full sm:w-auto">
+                          <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center flex-shrink-0 shadow-xs">
+                            <Banknote className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <div className="font-bold text-xs sm:text-sm text-amber-900">
+                              Kaos Selesai Sablon! Silakan Lunasi Sisa Pembayaran (50%)
+                            </div>
+                            <p className="text-[11px] text-amber-800">
+                              Nominal pelunasan: <strong className="font-mono text-xs">Rp {remaining.toLocaleString('id-ID')}</strong>. Paket langsung dikirim setelah pelunasan diverifikasi.
+                            </p>
+                          </div>
+                        </div>
+                        <a
+                          href={`https://wa.me/62895356338321?text=${encodeURIComponent(
+                            `Halo Admin Custom Apparel Bandung.id, kaos untuk pesanan ${foundOrder.id} sudah siap kirim. Saya mau melunasi sisa pembayaran sebesar Rp ${remaining.toLocaleString('id-ID')}. Mohon info nomor rekening dan verifikasinya ya!`
+                          )}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-full sm:w-auto py-2.5 px-4 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs rounded-xl shadow-xs transition whitespace-nowrap flex items-center justify-center gap-1.5"
+                        >
+                          <MessageSquare className="w-4 h-4" />
+                          <span>Kirim Bukti Pelunasan ke WA</span>
+                        </a>
+                      </div>
+                    );
+                  })()}
 
                   {/* Tracking Stepper (if not canceled) */}
                   {foundOrder.status !== 'Cancel' ? (
@@ -479,64 +588,258 @@ export const OrderTrackingPage: React.FC<OrderTrackingPageProps> = ({
 
                   {/* Order Specs Breakdown */}
                   <div className="space-y-3 pt-2">
-                    <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                      <Layers className="w-4 h-4 text-slate-500" />
-                      <span>Rincian Spesifikasi Kaos</span>
-                    </div>
-
-                    <div className="bg-slate-50 p-4 rounded-2xl space-y-2 text-xs text-slate-700 border border-slate-150">
-                      <div className="flex justify-between items-center pb-2 border-b border-slate-200/60">
-                        <span className="text-slate-500">Model & Warna:</span>
-                        <span className="font-semibold text-slate-900 flex items-center gap-1.5">
-                          <span
-                            className="w-3 h-3 rounded-full border border-slate-300"
-                            style={{ backgroundColor: foundOrder.colorHex }}
-                          />
-                          {foundOrder.colorName} ({foundOrder.neckType === 'round' ? 'O-Neck' : 'V-Neck'}, {foundOrder.sleeveType === 'short' ? 'Pendek' : 'Panjang'})
-                        </span>
+                    <div className="text-xs font-bold text-slate-900 flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <Layers className="w-4 h-4 text-slate-500" />
+                        <span>Rincian Spesifikasi Kaos ({foundOrder.items ? `${foundOrder.items.length} Desain` : '1 Desain'})</span>
                       </div>
-
-                      <div className="flex justify-between items-center pb-2 border-b border-slate-200/60">
-                        <span className="text-slate-500">Bahan Kain:</span>
-                        <span className="font-semibold text-slate-900">
-                          {foundOrder.materialName} {foundOrder.materialGsm && `(${foundOrder.materialGsm})`}
+                      {foundOrder.items && (
+                        <span className="text-[10px] font-bold text-sky-700 bg-sky-50 px-2 py-0.5 rounded-full border border-sky-200">
+                          Total {foundOrder.quantity} pcs
                         </span>
-                      </div>
-
-                      <div className="flex justify-between items-center pb-2 border-b border-slate-200/60">
-                        <span className="text-slate-500">Rincian Ukuran & Jumlah:</span>
-                        <span className="font-semibold text-slate-900 text-right max-w-[220px]">
-                          {foundOrder.size.startsWith('Size ') ? foundOrder.size : `Size ${foundOrder.size}`}
-                        </span>
-                      </div>
-
-                      <div className="flex justify-between items-center pb-2 border-b border-slate-200/60">
-                        <span className="text-slate-500">Teknik Sablon:</span>
-                        <span className="font-semibold text-slate-900">
-                          {foundOrder.techniqueName}
-                        </span>
-                      </div>
-
-                      {foundOrder.printBreakdown && foundOrder.printBreakdown.length > 0 && (
-                        <div className="pt-1 space-y-1">
-                          <div className="text-[11px] font-bold text-slate-500">Area Cetak:</div>
-                          {foundOrder.printBreakdown.map((p, i) => (
-                            <div key={i} className="flex justify-between text-[11px] text-slate-600 pl-2">
-                              <span>• {p.placement}: {p.name}</span>
-                              <span className="font-mono">Rp {p.cost.toLocaleString('id-ID')}</span>
-                            </div>
-                          ))}
-                        </div>
                       )}
-
-                      <div className="pt-2 flex justify-between items-center text-sm font-bold border-t border-slate-200">
-                        <span className="text-slate-800">Total Tagihan ({foundOrder.quantity} pcs):</span>
-                        <span className="text-base text-sky-700 font-mono">
-                          Rp {foundOrder.grandTotal.toLocaleString('id-ID')}
-                        </span>
-                      </div>
                     </div>
+
+                    {foundOrder.items && foundOrder.items.length > 0 ? (
+                      <div className="space-y-2.5">
+                        {foundOrder.items.map((it, idx) => (
+                          <div key={it.id || idx} className="bg-slate-50 p-3.5 rounded-2xl border border-slate-150 space-y-2 text-xs">
+                            <div className="flex items-start justify-between gap-2 pb-2 border-b border-slate-200/60">
+                              <div className="flex items-center gap-2">
+                                {it.mockupPreview && (
+                                  <img
+                                    src={it.mockupPreview}
+                                    alt="Mockup"
+                                    className="w-10 h-12 object-cover rounded-lg border border-slate-200 bg-white shadow-2xs"
+                                  />
+                                )}
+                                <div>
+                                  <div className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                                    <span>Item #{idx + 1}:</span>
+                                    <span
+                                      className="w-2.5 h-2.5 rounded-full border border-slate-300"
+                                      style={{ backgroundColor: it.colorHex }}
+                                    />
+                                    <span>{it.colorName}</span>
+                                  </div>
+                                  <div className="text-[11px] text-slate-500">
+                                    {it.neckType === 'round' ? 'O-Neck' : 'V-Neck'}, {it.sleeveType === 'short' ? 'Lengan Pendek' : 'Lengan Panjang'} • {it.materialName}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="text-right font-mono font-bold text-sky-700 text-xs">
+                                Rp {it.subtotal.toLocaleString('id-ID')}
+                              </div>
+                            </div>
+
+                            <div className="flex justify-between items-center text-[11px] text-slate-600">
+                              <span>Ukuran & Qty:</span>
+                              <span className="font-semibold text-slate-800">{it.size}</span>
+                            </div>
+
+                            <div className="flex justify-between items-center text-[11px] text-slate-600">
+                              <span>Teknik Sablon:</span>
+                              <span className="font-semibold text-slate-800">{it.techniqueName}</span>
+                            </div>
+
+                            {it.printBreakdown && it.printBreakdown.length > 0 && (
+                              <div className="text-[10px] text-slate-500 pt-1 border-t border-slate-200/60">
+                                <span className="font-semibold">Area Cetak: </span>
+                                {it.printBreakdown.map((p) => `${p.placement} (${p.name})`).join(', ')}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+
+                        <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-150 flex justify-between items-center text-sm font-bold">
+                          <span className="text-slate-800">Total Seluruh Tagihan ({foundOrder.quantity} pcs):</span>
+                          <span className="text-base text-sky-700 font-mono">
+                            Rp {foundOrder.grandTotal.toLocaleString('id-ID')}
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-slate-50 p-4 rounded-2xl space-y-2 text-xs text-slate-700 border border-slate-150">
+                        <div className="flex justify-between items-center pb-2 border-b border-slate-200/60">
+                          <span className="text-slate-500">Model & Warna:</span>
+                          <span className="font-semibold text-slate-900 flex items-center gap-1.5">
+                            <span
+                              className="w-3 h-3 rounded-full border border-slate-300"
+                              style={{ backgroundColor: foundOrder.colorHex }}
+                            />
+                            {foundOrder.colorName} ({foundOrder.neckType === 'round' ? 'O-Neck' : 'V-Neck'}, {foundOrder.sleeveType === 'short' ? 'Pendek' : 'Panjang'})
+                          </span>
+                        </div>
+
+                        <div className="flex justify-between items-center pb-2 border-b border-slate-200/60">
+                          <span className="text-slate-500">Bahan Kain:</span>
+                          <span className="font-semibold text-slate-900">
+                            {foundOrder.materialName} {foundOrder.materialGsm && `(${foundOrder.materialGsm})`}
+                          </span>
+                        </div>
+
+                        <div className="flex justify-between items-center pb-2 border-b border-slate-200/60">
+                          <span className="text-slate-500">Rincian Ukuran & Jumlah:</span>
+                          <span className="font-semibold text-slate-900 text-right max-w-[220px]">
+                            {foundOrder.size.startsWith('Size ') ? foundOrder.size : `Size ${foundOrder.size}`}
+                          </span>
+                        </div>
+
+                        <div className="flex justify-between items-center pb-2 border-b border-slate-200/60">
+                          <span className="text-slate-500">Teknik Sablon:</span>
+                          <span className="font-semibold text-slate-900">
+                            {foundOrder.techniqueName}
+                          </span>
+                        </div>
+
+                        {foundOrder.printBreakdown && foundOrder.printBreakdown.length > 0 && (
+                          <div className="pt-1 space-y-1">
+                            <div className="text-[11px] font-bold text-slate-500">Area Cetak:</div>
+                            {foundOrder.printBreakdown.map((p, i) => (
+                              <div key={i} className="flex justify-between text-[11px] text-slate-600 pl-2">
+                                <span>• {p.placement}: {p.name}</span>
+                                <span className="font-mono">Rp {p.cost.toLocaleString('id-ID')}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="pt-2 flex justify-between items-center text-sm font-bold border-t border-slate-200">
+                          <span className="text-slate-800">Total Tagihan ({foundOrder.quantity} pcs):</span>
+                          <span className="text-base text-sky-700 font-mono">
+                            Rp {foundOrder.grandTotal.toLocaleString('id-ID')}
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </div>
+
+                  {/* Payment & Financial Breakdown Card */}
+                  {(() => {
+                    const isDp = foundOrder.paymentType === 'dp_50' || !foundOrder.paymentType;
+                    const dp = foundOrder.dpAmount || Math.round(foundOrder.grandTotal * 0.5);
+                    const remaining = isDp ? (foundOrder.remainingAmount || (foundOrder.grandTotal - dp)) : 0;
+                    const isDpPaid = !!foundOrder.dpPaidAt || foundOrder.status !== 'Waiting for Payment';
+                    const isSettlementPaid = !!foundOrder.settlementPaidAt || !isDp || foundOrder.status === 'On Sending' || foundOrder.status === 'Done';
+
+                    return (
+                      <div className="space-y-3 pt-2">
+                        <div className="text-xs font-bold text-slate-900 flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <CreditCard className="w-4 h-4 text-emerald-600" />
+                            <span>Status & Skema Pembayaran</span>
+                          </div>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isSettlementPaid ? 'bg-emerald-100 text-emerald-800' : isDpPaid ? 'bg-sky-100 text-sky-800' : 'bg-amber-100 text-amber-800'}`}>
+                            {isSettlementPaid ? 'Lunas 100%' : isDpPaid ? 'DP 50% Masuk (Sisa Pelunasan)' : 'Menunggu DP'}
+                          </span>
+                        </div>
+
+                        <div className="bg-slate-50 p-4 rounded-2xl space-y-3 text-xs border border-slate-150">
+                          {/* Financial Rows */}
+                          <div className="space-y-2">
+                            <div className="flex justify-between items-center pb-2 border-b border-slate-200/60">
+                              <span className="text-slate-500">Skema Pembayaran:</span>
+                              <span className="font-semibold text-slate-900">
+                                {isDp ? 'Uang Muka (DP 50% Mulai Produksi)' : 'Bayar Penuh (Lunas 100%)'}
+                              </span>
+                            </div>
+
+                            <div className="flex justify-between items-center pb-2 border-b border-slate-200/60">
+                              <div>
+                                <span className="text-slate-700 font-semibold block">1. Pembayaran DP (50%):</span>
+                                <span className="text-[10px] text-slate-400">Syarat kaos masuk proses sablon</span>
+                              </div>
+                              <div className="text-right">
+                                <span className="font-mono font-bold text-slate-900 block">
+                                  Rp {dp.toLocaleString('id-ID')}
+                                </span>
+                                {isDpPaid ? (
+                                  <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 font-bold">
+                                    <Check className="w-3 h-3 stroke-[3]" /> Terverifikasi
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] text-amber-600 font-bold">Menunggu Transfer</span>
+                                )}
+                              </div>
+                            </div>
+
+                            {isDp && (
+                              <div className="flex justify-between items-center pb-2 border-b border-slate-200/60">
+                                <div>
+                                  <span className="text-slate-700 font-semibold block">2. Pelunasan Sisa (50%):</span>
+                                  <span className="text-[10px] text-slate-400">Dibayar saat selesai QC & siap kirim</span>
+                                </div>
+                                <div className="text-right">
+                                  <span className="font-mono font-bold text-slate-900 block">
+                                    Rp {remaining.toLocaleString('id-ID')}
+                                  </span>
+                                  {isSettlementPaid ? (
+                                    <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 font-bold">
+                                      <Check className="w-3 h-3 stroke-[3]" /> Lunas
+                                    </span>
+                                  ) : foundOrder.status === 'Ready to send' ? (
+                                    <span className="text-[10px] text-amber-600 font-bold animate-pulse">
+                                      Tagihan Siap Kirim
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] text-slate-400">Menunggu Produksi Beres</span>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                            <div className="pt-1 flex justify-between items-center text-sm font-bold">
+                              <span className="text-slate-800">Total Keseluruhan:</span>
+                              <span className="text-base text-slate-900 font-mono">
+                                Rp {foundOrder.grandTotal.toLocaleString('id-ID')}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Bank Accounts */}
+                          <div className="pt-2 border-t border-slate-200 space-y-2">
+                            <div className="text-[10px] uppercase font-bold text-slate-500">
+                              Rekening Resmi Transfer Vendor:
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {bankAccounts.map((b) => (
+                                <div
+                                  key={b.bankName}
+                                  className="bg-white p-2.5 rounded-xl border border-slate-200 flex items-center justify-between gap-2 shadow-2xs"
+                                >
+                                  <div>
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="font-bold text-[11px] text-sky-700 bg-sky-50 px-1.5 py-0.5 rounded border border-sky-100">
+                                        {b.bankName}
+                                      </span>
+                                      <span className="text-xs font-mono font-bold text-slate-900">
+                                        {b.accountNumber}
+                                      </span>
+                                    </div>
+                                    <div className="text-[10px] text-slate-500 mt-0.5">
+                                      a.n {b.holderName}
+                                    </div>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCopyBank(b.accountNumber)}
+                                    className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 hover:text-slate-900 transition flex-shrink-0 cursor-pointer"
+                                    title="Salin Nomor Rekening"
+                                  >
+                                    {copiedBank === b.accountNumber ? (
+                                      <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                    ) : (
+                                      <Copy className="w-3.5 h-3.5" />
+                                    )}
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                   {/* Customer & Shipping Destination */}
                   {(foundOrder.customerName || foundOrder.shippingAddress || foundOrder.customerNotes) && (
@@ -575,7 +878,7 @@ export const OrderTrackingPage: React.FC<OrderTrackingPageProps> = ({
                   <div className="pt-2">
                     <a
                       href={`https://wa.me/62895356338321?text=${encodeURIComponent(
-                        `Halo Admin CustomKaos, saya mau menanyakan pesanan saya dengan kode ${foundOrder.id}. Mohon info update statusnya ya, terima kasih!`
+                        `Halo Admin Custom Apparel Bandung.id, saya mau menanyakan pesanan saya dengan kode ${foundOrder.id}. Mohon info update statusnya ya, terima kasih!`
                       )}`}
                       target="_blank"
                       rel="noopener noreferrer"
@@ -610,7 +913,7 @@ export const OrderTrackingPage: React.FC<OrderTrackingPageProps> = ({
             <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2">
               <a
                 href={`https://wa.me/62895356338321?text=${encodeURIComponent(
-                  `Halo Admin CustomKaos, saya mencari pesanan dengan kode "${searchInput}", namun statusnya tidak ditemukan di website. Mohon bantuannya untuk pengecekan ya, terima kasih!`
+                  `Halo Admin Custom Apparel Bandung.id, saya mencari pesanan dengan kode "${searchInput}", namun statusnya tidak ditemukan di website. Mohon bantuannya untuk pengecekan ya, terima kasih!`
                 )}`}
                 target="_blank"
                 rel="noopener noreferrer"

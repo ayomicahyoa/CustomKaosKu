@@ -25,6 +25,8 @@ import {
   Download,
   Image,
   ExternalLink,
+  CreditCard,
+  Check,
 } from 'lucide-react';
 
 const ALL_STATUSES: OrderStatus[] = [
@@ -50,6 +52,8 @@ export const OrderListManager: React.FC = () => {
   const [editCourier, setEditCourier] = useState('');
   const [editTrackingNumber, setEditTrackingNumber] = useState('');
   const [editAdminNotes, setEditAdminNotes] = useState('');
+  const [editDpPaidAt, setEditDpPaidAt] = useState<string | undefined>(undefined);
+  const [editSettlementPaidAt, setEditSettlementPaidAt] = useState<string | undefined>(undefined);
   const [modalAngle, setModalAngle] = useState<'front' | 'back' | 'sleeve-left' | 'sleeve-right'>('front');
 
   const refreshOrders = () => {
@@ -125,6 +129,8 @@ export const OrderListManager: React.FC = () => {
     setEditCourier(order.courier || '');
     setEditTrackingNumber(order.trackingNumber || '');
     setEditAdminNotes(order.adminNotes || '');
+    setEditDpPaidAt(order.dpPaidAt);
+    setEditSettlementPaidAt(order.settlementPaidAt);
     setIsEditModalOpen(true);
   };
 
@@ -136,6 +142,8 @@ export const OrderListManager: React.FC = () => {
       courier: editCourier,
       trackingNumber: editTrackingNumber,
       adminNotes: editAdminNotes,
+      dpPaidAt: editDpPaidAt,
+      settlementPaidAt: editSettlementPaidAt,
     });
 
     refreshOrders();
@@ -454,6 +462,22 @@ export const OrderListManager: React.FC = () => {
                         <div className="text-[10px] text-slate-500 font-medium">
                           {order.quantity} pcs @ Rp {order.unitPrice.toLocaleString('id-ID')}
                         </div>
+                        {/* Payment status badge */}
+                        <div className="mt-1">
+                          {order.settlementPaidAt || order.paymentType === 'full' || order.status === 'Done' ? (
+                            <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded">
+                              <Check className="w-2.5 h-2.5 stroke-[3]" /> Lunas 100%
+                            </span>
+                          ) : order.dpPaidAt || order.status !== 'Waiting for Payment' ? (
+                            <span className="inline-flex items-center gap-1 text-[9px] font-bold text-sky-700 bg-sky-50 border border-sky-200 px-1.5 py-0.5 rounded">
+                              <Check className="w-2.5 h-2.5 stroke-[3]" /> DP Masuk
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[9px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
+                              Belum DP
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       {/* Status */}
@@ -592,18 +616,44 @@ export const OrderListManager: React.FC = () => {
                 </div>
               )}
 
-              <div className="flex justify-between pt-1">
-                <span className="text-slate-500">Spesifikasi:</span>
-                <span className="font-semibold text-slate-800">
-                  {selectedOrder.colorName} • {selectedOrder.materialName}
-                </span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-slate-500">Ukuran:</span>
-                <span className="font-semibold text-slate-900 bg-white px-2 py-0.5 rounded border border-slate-200">
-                  {selectedOrder.size}
-                </span>
-              </div>
+              {selectedOrder.items && selectedOrder.items.length > 0 ? (
+                <div className="space-y-1.5 pt-1">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase block">
+                    Daftar Item ({selectedOrder.items.length} Desain Kaos):
+                  </span>
+                  <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                    {selectedOrder.items.map((it, idx) => (
+                      <div key={it.id || idx} className="bg-white p-2 rounded-xl border border-slate-200 text-[11px] flex items-center justify-between gap-2 shadow-2xs">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full border border-slate-300 flex-shrink-0" style={{ backgroundColor: it.colorHex }} />
+                          <div>
+                            <span className="font-bold text-slate-800">#{idx + 1} {it.colorName}</span>
+                            <span className="text-slate-500"> ({it.size}) • {it.techniqueName}</span>
+                          </div>
+                        </div>
+                        <span className="font-mono font-bold text-slate-900 flex-shrink-0">
+                          {it.quantity} pcs • Rp {it.subtotal.toLocaleString('id-ID')}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="flex justify-between pt-1">
+                    <span className="text-slate-500">Spesifikasi:</span>
+                    <span className="font-semibold text-slate-800">
+                      {selectedOrder.colorName} • {selectedOrder.materialName}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500">Ukuran:</span>
+                    <span className="font-semibold text-slate-900 bg-white px-2 py-0.5 rounded border border-slate-200">
+                      {selectedOrder.size}
+                    </span>
+                  </div>
+                </>
+              )}
               <div className="flex justify-between">
                 <span className="text-slate-500">Qty & Tagihan:</span>
                 <span className="font-mono font-bold text-sky-700">
@@ -715,6 +765,98 @@ export const OrderListManager: React.FC = () => {
                 <p className="text-[11px] text-slate-400 mt-1">
                   Status ini akan langsung tampil saat customer melacak di portal <code>#/cekorderan</code>.
                 </p>
+              </div>
+
+              {/* Payment Verification Controls */}
+              <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 font-bold text-slate-800">
+                    <CreditCard className="w-3.5 h-3.5 text-sky-600" />
+                    <span>Verifikasi Pembayaran ({selectedOrder.paymentType === 'full' ? 'Lunas 100%' : 'DP 50%'})</span>
+                  </div>
+                  <span className="font-mono font-bold text-slate-900">
+                    Total: Rp {selectedOrder.grandTotal.toLocaleString('id-ID')}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                  {/* DP Control */}
+                  <div className={`p-2.5 rounded-xl border flex flex-col justify-between gap-1.5 ${editDpPaidAt ? 'bg-emerald-50/80 border-emerald-200 text-emerald-950' : 'bg-white border-slate-200'}`}>
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-[11px]">DP (50%)</span>
+                      <span className="font-mono font-bold text-xs">
+                        Rp {(selectedOrder.dpAmount || Math.round(selectedOrder.grandTotal * 0.5)).toLocaleString('id-ID')}
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-slate-500">
+                      {editDpPaidAt ? (
+                        <span className="text-emerald-700 font-semibold flex items-center gap-1">
+                          <Check className="w-3 h-3 stroke-[3]" /> Terbayar {new Date(editDpPaidAt).toLocaleDateString('id-ID')}
+                        </span>
+                      ) : (
+                        'Belum diverifikasi'
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (editDpPaidAt) {
+                          setEditDpPaidAt(undefined);
+                        } else {
+                          const now = new Date().toISOString();
+                          setEditDpPaidAt(now);
+                          if (editStatus === 'Waiting for Payment') {
+                            setEditStatus('Order masuk DP');
+                          }
+                        }
+                      }}
+                      className={`mt-1 py-1.5 px-2 rounded-lg text-[10px] font-bold transition flex items-center justify-center gap-1 cursor-pointer ${
+                        editDpPaidAt
+                          ? 'bg-rose-100 text-rose-700 hover:bg-rose-200'
+                          : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs'
+                      }`}
+                    >
+                      {editDpPaidAt ? 'Batalkan Status DP' : '✓ Tandai DP Diterima'}
+                    </button>
+                  </div>
+
+                  {/* Settlement Control */}
+                  <div className={`p-2.5 rounded-xl border flex flex-col justify-between gap-1.5 ${editSettlementPaidAt ? 'bg-emerald-50/80 border-emerald-200 text-emerald-950' : 'bg-white border-slate-200'}`}>
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-[11px]">Pelunasan Sisa</span>
+                      <span className="font-mono font-bold text-xs">
+                        Rp {(selectedOrder.remainingAmount || (selectedOrder.grandTotal - (selectedOrder.dpAmount || Math.round(selectedOrder.grandTotal * 0.5)))).toLocaleString('id-ID')}
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-slate-500">
+                      {editSettlementPaidAt ? (
+                        <span className="text-emerald-700 font-semibold flex items-center gap-1">
+                          <Check className="w-3 h-3 stroke-[3]" /> Lunas {new Date(editSettlementPaidAt).toLocaleDateString('id-ID')}
+                        </span>
+                      ) : (
+                        'Belum diverifikasi'
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (editSettlementPaidAt) {
+                          setEditSettlementPaidAt(undefined);
+                        } else {
+                          const now = new Date().toISOString();
+                          setEditSettlementPaidAt(now);
+                        }
+                      }}
+                      className={`mt-1 py-1.5 px-2 rounded-lg text-[10px] font-bold transition flex items-center justify-center gap-1 cursor-pointer ${
+                        editSettlementPaidAt
+                          ? 'bg-rose-100 text-rose-700 hover:bg-rose-200'
+                          : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-2xs'
+                      }`}
+                    >
+                      {editSettlementPaidAt ? 'Batalkan Status Lunas' : '✓ Tandai Lunas'}
+                    </button>
+                  </div>
+                </div>
               </div>
 
               {/* Kurir & Nomor Resi */}

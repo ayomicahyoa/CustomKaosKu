@@ -99,7 +99,7 @@ export const ViewAngleSwitcher: React.FC<ViewAngleSwitcherProps> = ({
                     Panduan Ukuran (Size Chart)
                   </h3>
                   <p className="text-[11px] text-slate-500">
-                    Spesifikasi standar ukuran kaos CustomKaosWeb
+                    Spesifikasi standar ukuran kaos Custom Apparel Bandung.id
                   </p>
                 </div>
               </div>

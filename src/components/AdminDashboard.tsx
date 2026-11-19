@@ -25,6 +25,7 @@ import {
 } from '../services/supabaseClient';
 import { OrderListManager } from './admin/OrderListManager';
 import { ReportingManager } from './admin/ReportingManager';
+import { CouponManager } from './admin/CouponManager';
 import {
   Layers,
   Printer,
@@ -43,11 +44,11 @@ import {
   CheckCircle2,
   LogOut,
   ExternalLink,
-  ShieldCheck,
   KeyRound,
   ShoppingBag,
   BarChart3,
   Globe,
+  Tag,
 } from 'lucide-react';
 
 interface AdminDashboardProps {
@@ -56,7 +57,7 @@ interface AdminDashboardProps {
   onNavigateToStudio: () => void;
 }
 
-type AdminSection = 'orders' | 'reporting' | 'products';
+type AdminSection = 'orders' | 'reporting' | 'products' | 'coupons';
 type AdminTab = 'materials' | 'techniques' | 'zones' | 'colors' | 'settings';
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({
@@ -66,7 +67,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 }) => {
   // Authentication State
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
-    return sessionStorage.getItem('customkaos_admin_auth') === 'true';
+    return sessionStorage.getItem('cab_admin_auth') === 'true';
   });
 
   const [loginPin, setLoginPin] = useState('');
@@ -76,7 +77,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     e.preventDefault();
     if (verifyAdminPin(loginPin)) {
       setIsAuthenticated(true);
-      sessionStorage.setItem('customkaos_admin_auth', 'true');
+      sessionStorage.setItem('cab_admin_auth', 'true');
       setLoginError(false);
       setLoginPin('');
     } else {
@@ -86,7 +87,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   const handleLogout = () => {
     setIsAuthenticated(false);
-    sessionStorage.removeItem('customkaos_admin_auth');
+    sessionStorage.removeItem('cab_admin_auth');
   };
 
   const [activeSection, setActiveSection] = useState<AdminSection>('orders');
@@ -442,7 +443,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `customkaos-db-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `cab-db-backup-${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     showToast('Backup database JSON berhasil di-download!');
   };
@@ -490,11 +491,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
           {/* Header */}
           <div className="text-center mb-6">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-sky-600 to-indigo-600 flex items-center justify-center text-white mx-auto mb-3 shadow-lg shadow-sky-500/20">
-              <ShieldCheck className="w-6 h-6" />
-            </div>
+            <img
+              src="/logo.jpg"
+              alt="Custom Apparel Bandung.id"
+              className="h-12 w-auto object-contain mx-auto mb-3 rounded-xl bg-white p-1 border border-slate-700 shadow-md"
+            />
             <h1 className="text-lg sm:text-xl font-black text-white tracking-tight">
-              CustomKaos <span className="text-sky-400">Admin</span> Portal
+              Custom Apparel Bandung.id <span className="text-sky-400">Admin</span>
             </h1>
             <p className="text-xs text-slate-400 mt-1">
               Halaman khusus pengelola untuk mengatur harga & opsi produk
@@ -570,16 +573,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       <aside className="hidden md:flex w-64 bg-slate-900 text-white flex-col justify-between border-r border-slate-800 sticky top-0 h-screen z-30 flex-shrink-0">
         <div>
           {/* Brand */}
-          <div className="p-5 border-b border-slate-800 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-sky-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-sky-500/20">
-              <Database className="w-4 h-4" />
-            </div>
+          <div className="p-4 border-b border-slate-800 flex items-center gap-3">
+            <img
+              src="/logo.jpg"
+              alt="CAB Logo"
+              className="h-9 w-auto object-contain rounded-lg bg-white p-0.5 border border-slate-700"
+            />
             <div>
-              <div className="font-black text-sm text-white tracking-tight flex items-center gap-1.5">
-                <span>CustomKaos</span>
-                <span className="text-sky-400">Admin</span>
+              <div className="font-black text-xs text-white tracking-tight flex items-center gap-1">
+                <span>Custom Apparel Bandung.id</span>
               </div>
-              <p className="text-[10px] text-slate-400 font-mono">PORTAL /adm</p>
+              <p className="text-[10px] text-sky-400 font-mono">PORTAL ADMIN</p>
             </div>
           </div>
 
@@ -633,6 +637,21 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <span>3. Product Database</span>
               </div>
             </button>
+
+            {/* 4. Kupon & Promo */}
+            <button
+              onClick={() => setActiveSection('coupons')}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition cursor-pointer ${
+                activeSection === 'coupons'
+                  ? 'bg-sky-600 text-white shadow-md shadow-sky-600/30'
+                  : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <Tag className="w-4 h-4" />
+                <span>4. Kupon & Diskon</span>
+              </div>
+            </button>
           </nav>
         </div>
 
@@ -659,9 +678,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       <div className="md:hidden bg-slate-900 text-white p-3 border-b border-slate-800 flex items-center justify-between sticky top-0 z-30">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-sky-600 flex items-center justify-center text-white font-bold text-xs">
-            CK
+            CAB
           </div>
-          <span className="font-bold text-sm">CustomKaos Admin</span>
+          <span className="font-bold text-sm">CAB Admin</span>
         </div>
         <div className="flex items-center gap-2">
           <select
@@ -672,6 +691,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             <option value="orders">1. OrderList</option>
             <option value="reporting">2. Reporting</option>
             <option value="products">3. Product Database</option>
+            <option value="coupons">4. Kupon & Diskon</option>
           </select>
           <button
             onClick={onNavigateToStudio}
@@ -694,7 +714,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 ? '1. Daftar Pesanan Masuk (OrderList)'
                 : activeSection === 'reporting'
                 ? '2. Laporan Penjualan (Reporting)'
-                : '3. Database Produk & Tarif (Product Database)'}
+                : activeSection === 'products'
+                ? '3. Database Produk & Tarif (Product Database)'
+                : '4. Manajemen Kupon & Diskon Promo'}
             </span>
           </div>
           <div className="flex items-center gap-3">
@@ -1873,6 +1895,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </div>
             </div>
           )}
+
+          {/* SECTION 4: COUPON & DISCOUNT MANAGER */}
+          {activeSection === 'coupons' && <CouponManager />}
         </main>
       </div>
 

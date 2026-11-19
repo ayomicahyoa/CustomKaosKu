@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
-import type { CustomTShirtState, PrintZonePreset, ViewAngle } from '../types';
+import React, { useState, useEffect } from 'react';
+import type { CustomTShirtState, PrintZonePreset, ViewAngle, CartItem } from '../types';
 import { PRINT_ZONE_PRESETS } from '../data/mockData';
 import { addOrder } from '../services/ordersStorage';
+import { addToCart } from '../services/cartStorage';
+import { getCurrentUser } from '../services/authService';
 import { imageUrlToDataUrl } from '../services/imageUtils';
 import { uploadOrderToDrive, isDriveConfigured } from '../services/driveUploader';
+import { getBankAccounts } from '../services/bankConfig';
 import {
   Download,
   Share2,
@@ -19,6 +22,10 @@ import {
   CheckCircle2,
   ExternalLink,
   Loader2,
+  CreditCard,
+  Copy,
+  Check,
+  ShoppingBag,
 } from 'lucide-react';
 
 interface PriceSummaryBarProps {
@@ -27,6 +34,8 @@ interface PriceSummaryBarProps {
   onUpdateQuantity: (qty: number) => void;
   onExportMockup: () => void;
   onCaptureAllMockups: () => Promise<{ primary: string; all: Record<ViewAngle, string> }>;
+  onOpenCart?: () => void;
+  onStartNewDesign?: () => void;
 }
 
 export const PriceSummaryBar: React.FC<PriceSummaryBarProps> = ({
@@ -35,6 +44,8 @@ export const PriceSummaryBar: React.FC<PriceSummaryBarProps> = ({
   onUpdateQuantity,
   onExportMockup,
   onCaptureAllMockups,
+  onOpenCart,
+  onStartNewDesign,
 }) => {
   const [showSpecModal, setShowSpecModal] = useState(false);
   const [copiedWA, setCopiedWA] = useState(false);
@@ -42,16 +53,28 @@ export const PriceSummaryBar: React.FC<PriceSummaryBarProps> = ({
 
   // Customer Checkout & Shipping Info State
   const [showOrderModal, setShowOrderModal] = useState(false);
-  const [customerName, setCustomerName] = useState('');
-  const [customerPhone, setCustomerPhone] = useState('');
+  const currentUser = getCurrentUser();
+  const [customerName, setCustomerName] = useState(() => currentUser?.fullName || '');
+  const [customerPhone, setCustomerPhone] = useState(() => currentUser?.phone || '');
   const [shippingCity, setShippingCity] = useState('');
   const [shippingAddress, setShippingAddress] = useState('');
   const [customerNotes, setCustomerNotes] = useState('');
+  const [paymentType, setPaymentType] = useState<'dp_50' | 'full'>('dp_50');
+  const [copiedAccount, setCopiedAccount] = useState<string | null>(null);
   const [orderSubmitted, setOrderSubmitted] = useState(false);
   const [isProcessingOrder, setIsProcessingOrder] = useState(false);
   const [uploadStatus, setUploadStatus] = useState('');
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const [showAddedToCartModal, setShowAddedToCartModal] = useState(false);
 
   const targetWhatsAppNumber = '62895356338321';
+  const bankAccounts = getBankAccounts();
+
+  const handleCopyAccount = (accNo: string) => {
+    navigator.clipboard.writeText(accNo);
+    setCopiedAccount(accNo);
+    setTimeout(() => setCopiedAccount(null), 2500);
+  };
 
   // Cost calculation
   const sleeveExtra = state.sleeveType === 'long' ? 10000 : 0;
@@ -93,6 +116,19 @@ export const PriceSummaryBar: React.FC<PriceSummaryBarProps> = ({
   const finalUnitPrice = unitPriceBeforeDiscount - discountAmount;
   const grandTotal = finalUnitPrice * state.quantity;
 
+  // DP hanya berlaku untuk produk >= 12 pcs
+  const isDpAllowed = state.quantity >= 12;
+
+  useEffect(() => {
+    if (!isDpAllowed && paymentType === 'dp_50') {
+      setPaymentType('full');
+    }
+  }, [isDpAllowed, paymentType]);
+
+  // Payment breakdown amounts
+  const dpAmount = isDpAllowed && paymentType === 'dp_50' ? Math.round(grandTotal * 0.5) : grandTotal;
+  const remainingAmount = isDpAllowed && paymentType === 'dp_50' ? grandTotal - dpAmount : 0;
+
   const getSizeSummaryText = () => {
     if (!state.sizeBreakdown) return `Size ${state.size} (${state.quantity} pcs)`;
     const entries = Object.entries(state.sizeBreakdown).filter(([, q]) => Number(q) > 0);
@@ -101,7 +137,7 @@ export const PriceSummaryBar: React.FC<PriceSummaryBarProps> = ({
     return entries.map(([s, q]) => `${s}: ${q}`).join(', ') + ` (Total ${state.quantity} pcs)`;
   };
 
-  // Generate WhatsApp order message with Customer Info
+  // Generate WhatsApp order message with Customer Info & Payment Details
   const generateWAMessage = (
     name = customerName,
     phone = customerPhone,
@@ -131,7 +167,12 @@ ${
         .join('\n')
     : '• Polos'
 }
-• Estimasi Total: Rp ${grandTotal.toLocaleString('id-ID')}
+---------------------------------------
+💳 *SKEMA PEMBAYARAN & TAGIHAN*
+• Total Pesanan: Rp ${grandTotal.toLocaleString('id-ID')}
+• Skema Pembayaran: ${paymentType === 'dp_50' ? 'Uang Muka (DP 50%)' : 'Lunas 100%'}
+• Tagihan Saat Ini (DP): Rp ${dpAmount.toLocaleString('id-ID')}
+${paymentType === 'dp_50' ? `• Sisa Pelunasan (Dibayar Saat Siap Kirim): Rp ${remainingAmount.toLocaleString('id-ID')}\n` : ''}• Rekening Transfer: ${bankAccounts[0]?.bankName || 'BCA'} ${bankAccounts[0]?.accountNumber || '-'} a.n ${bankAccounts[0]?.holderName || 'Vendor'}
 ---------------------------------------`;
     return encodeURIComponent(text);
   };
@@ -161,11 +202,16 @@ ${
       unitPrice: finalUnitPrice,
       discountPercent: discountPercent,
       grandTotal: grandTotal,
+      paymentType,
+      dpAmount,
+      remainingAmount,
+      userId: currentUser?.id,
+      userEmail: currentUser?.email,
     });
   };
 
   const generateOrderDetailsText = () => {
-    return `DETAIL PESANAN CUSTOM KAOS
+    return `DETAIL PESANAN CUSTOM APPAREL BANDUNG.ID
 =====================================
 Kode Order: ${orderCode}
 Tanggal: ${new Date().toLocaleString('id-ID')}
@@ -188,11 +234,60 @@ SPESIFIKASI KAOS:
 AREA CETAK:
 ${activePrintBreakdown.length > 0 ? activePrintBreakdown.map(p => `- ${p.placement}: ${p.name} (Rp ${p.cost.toLocaleString('id-ID')})`).join('\n') : '- Polos (tanpa sablon)'}
 
-RINCIAN BIAYA:
+RINCIAN BIAYA & PEMBAYARAN:
 - Harga Satuan: Rp ${finalUnitPrice.toLocaleString('id-ID')}
 - Diskon: ${discountPercent}%
 - Grand Total: Rp ${grandTotal.toLocaleString('id-ID')}
+- Skema Pembayaran: ${paymentType === 'dp_50' ? 'Uang Muka (DP 50% Mulai Produksi)' : 'Lunas 100%'}
+- Tagihan Awal (DP): Rp ${dpAmount.toLocaleString('id-ID')}
+- Sisa Pelunasan: Rp ${remainingAmount.toLocaleString('id-ID')} (Ditagihkan saat selesai QC & siap kirim)
+- Rekening Transfer: ${bankAccounts.map((b) => `${b.bankName} ${b.accountNumber} (${b.holderName})`).join(' | ')}
 =====================================`;
+  };
+
+  const handleAddToCart = async () => {
+    setIsAddingToCart(true);
+    try {
+      let mockupPreview: string | undefined;
+      let mockupPreviews: Partial<Record<ViewAngle, string>> | undefined;
+      try {
+        const captured = await onCaptureAllMockups();
+        mockupPreview = captured.primary;
+        mockupPreviews = captured.all;
+      } catch (err) {
+        console.warn('Gagal capture mockup untuk keranjang:', err);
+      }
+
+      const item: CartItem = {
+        id: 'ITEM-' + Math.random().toString(36).substring(2, 9).toUpperCase(),
+        createdAt: new Date().toISOString(),
+        neckType: state.neckType,
+        sleeveType: state.sleeveType,
+        colorName: state.color.name,
+        colorHex: state.color.hex,
+        materialName: state.material.name,
+        materialGsm: state.material.gsm,
+        techniqueName: state.technique.name,
+        size: getSizeSummaryText(),
+        sizeBreakdown: state.sizeBreakdown,
+        quantity: state.quantity,
+        printBreakdown: activePrintBreakdown,
+        unitPrice: finalUnitPrice,
+        discountPercent: discountPercent,
+        subtotal: grandTotal,
+        mockupPreview,
+        mockupPreviews,
+        designs: state.designs,
+      };
+
+      addToCart(item);
+      setShowAddedToCartModal(true);
+    } catch (err) {
+      console.error('Error adding to cart:', err);
+      alert('Gagal menambahkan ke keranjang. Silakan coba lagi.');
+    } finally {
+      setIsAddingToCart(false);
+    }
   };
 
   const handleSubmitOrderForm = async (e: React.FormEvent) => {
@@ -254,7 +349,7 @@ RINCIAN BIAYA:
         }
       }
 
-      // 4. Record order to localStorage (with images + drive link)
+      // 4. Record order to localStorage (with images + drive link + payment breakdown)
       addOrder({
         id: orderCode,
         createdAt: new Date().toISOString(),
@@ -279,6 +374,11 @@ RINCIAN BIAYA:
         unitPrice: finalUnitPrice,
         discountPercent: discountPercent,
         grandTotal: grandTotal,
+        paymentType,
+        dpAmount,
+        remainingAmount,
+        userId: currentUser?.id,
+        userEmail: currentUser?.email,
         mockupPreview,
         mockupPreviews,
         designFiles: designFilesList,
@@ -406,6 +506,21 @@ RINCIAN BIAYA:
               <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-500" />
               <span className="hidden sm:inline">Download</span>
               <span className="sm:hidden">Save</span>
+            </button>
+
+            {/* Add to Cart Button */}
+            <button
+              onClick={handleAddToCart}
+              disabled={isAddingToCart}
+              className="flex-1 md:flex-initial flex items-center justify-center gap-1 sm:gap-1.5 px-2.5 sm:px-3.5 py-2 sm:py-2.5 rounded-xl border border-sky-300 bg-sky-50 hover:bg-sky-100 text-sky-800 text-[11px] sm:text-xs font-bold transition cursor-pointer shadow-2xs disabled:opacity-50"
+              title="Simpan desain ini ke keranjang belanja"
+            >
+              {isAddingToCart ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-sky-600" />
+              ) : (
+                <ShoppingBag className="w-3.5 h-3.5 text-sky-600" />
+              )}
+              <span>+ Keranjang</span>
             </button>
 
             {/* Order Now Button with Customer Info Modal */}
@@ -541,7 +656,7 @@ RINCIAN BIAYA:
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div>
-                <span className="text-[10px] uppercase font-bold text-slate-400">Checkout Custom Kaos</span>
+                <span className="text-[10px] uppercase font-bold text-slate-400">Checkout Custom Apparel Bandung.id</span>
                 <h3 className="text-base font-bold text-slate-900">
                   Data Pemesan & Pengiriman
                 </h3>
@@ -606,9 +721,11 @@ RINCIAN BIAYA:
                       </label>
                       <input
                         type="tel"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
                         required
                         value={customerPhone}
-                        onChange={(e) => setCustomerPhone(e.target.value)}
+                        onChange={(e) => setCustomerPhone(e.target.value.replace(/[^0-9]/g, ''))}
                         placeholder="Contoh: 081234567890"
                         className="w-full p-2.5 rounded-xl border border-slate-300 bg-white focus:outline-none focus:border-slate-900 transition font-mono"
                       />
@@ -649,6 +766,143 @@ RINCIAN BIAYA:
                       placeholder="Contoh: Jl. Riau No. 45, RT 02/RW 04, Citarum, Kec. Bandung Wetan, 40115"
                       className="w-full p-2.5 rounded-xl border border-slate-300 bg-white focus:outline-none focus:border-slate-900 transition resize-none"
                     />
+                  </div>
+                </div>
+
+                {/* Skema Pembayaran (DP 50% vs Lunas) */}
+                <div className="space-y-3 pt-1">
+                  <div className="font-bold text-slate-800 text-[11px] uppercase tracking-wider flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <CreditCard className="w-3.5 h-3.5 text-sky-600" />
+                      <span>Teknis Pembayaran (Transfer Bank Manual)</span>
+                    </span>
+                  </div>
+
+                  {/* Payment Type Selection Cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {/* Option 1: DP 50% */}
+                    <div
+                      onClick={() => {
+                        if (isDpAllowed) setPaymentType('dp_50');
+                      }}
+                      className={`p-3 rounded-2xl border-2 transition flex flex-col justify-between gap-1.5 ${
+                        !isDpAllowed
+                          ? 'opacity-50 border-slate-200 bg-slate-50 cursor-not-allowed'
+                          : paymentType === 'dp_50'
+                          ? 'border-sky-600 bg-sky-50/60 shadow-xs ring-2 ring-sky-500/20 cursor-pointer'
+                          : 'border-slate-200 bg-white hover:border-slate-300 cursor-pointer'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                          <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${
+                            !isDpAllowed
+                              ? 'border-slate-300 bg-slate-200'
+                              : paymentType === 'dp_50'
+                              ? 'border-sky-600 bg-sky-600 text-white'
+                              : 'border-slate-300'
+                          }`}>
+                            {isDpAllowed && paymentType === 'dp_50' && <span className="w-1.5 h-1.5 bg-white rounded-full" />}
+                          </span>
+                          <span>Uang Muka (DP 50%)</span>
+                        </span>
+                        {isDpAllowed ? (
+                          <span className="text-[9px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded">
+                            Rekomendasi
+                          </span>
+                        ) : (
+                          <span className="text-[9px] bg-slate-200 text-slate-600 font-bold px-1.5 py-0.5 rounded">
+                            Min. 12 pcs
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-[11px] text-slate-500 leading-tight">
+                        {isDpAllowed
+                          ? 'Bayar 50% sekarang untuk masuk meja sablon. Pelunasan sisa saat kaos siap kirim.'
+                          : 'DP 50% hanya berlaku untuk pemesanan minimal 12 pcs. Pesanan di bawah 12 pcs wajib bayar lunas.'}
+                      </div>
+                      <div className="pt-1.5 border-t border-slate-200/60 flex items-baseline justify-between">
+                        <span className="text-[10px] text-slate-500 font-semibold">Bayar Sekarang:</span>
+                        <span className="font-mono font-bold text-sky-700 text-xs sm:text-sm">
+                          {isDpAllowed ? `Rp ${Math.round(grandTotal * 0.5).toLocaleString('id-ID')}` : '-'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Option 2: Full Payment */}
+                    <div
+                      onClick={() => setPaymentType('full')}
+                      className={`p-3 rounded-2xl border-2 transition cursor-pointer flex flex-col justify-between gap-1.5 ${
+                        paymentType === 'full'
+                          ? 'border-sky-600 bg-sky-50/60 shadow-xs ring-2 ring-sky-500/20'
+                          : 'border-slate-200 bg-white hover:border-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                          <span className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center ${paymentType === 'full' ? 'border-sky-600 bg-sky-600 text-white' : 'border-slate-300'}`}>
+                            {paymentType === 'full' && <span className="w-1.5 h-1.5 bg-white rounded-full" />}
+                          </span>
+                          <span>Bayar Lunas 100%</span>
+                        </span>
+                        <span className="text-[9px] bg-emerald-100 text-emerald-800 font-bold px-1.5 py-0.5 rounded">
+                          Lunas di Awal
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-slate-500 leading-tight">
+                        Bayar penuh di awal agar paket langsung dikirim kurir begitu beres QC tanpa tunggu pelunasan.
+                      </div>
+                      <div className="pt-1.5 border-t border-slate-200/60 flex items-baseline justify-between">
+                        <span className="text-[10px] text-slate-500 font-semibold">Bayar Sekarang:</span>
+                        <span className="font-mono font-bold text-slate-900 text-xs sm:text-sm">
+                          Rp {grandTotal.toLocaleString('id-ID')}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Bank Transfer Details with One-Click Copy */}
+                  <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
+                    <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                      Rekening Tujuan Transfer Vendor:
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {bankAccounts.map((b) => (
+                        <div
+                          key={b.bankName}
+                          className="bg-white p-2.5 rounded-xl border border-slate-200 flex items-center justify-between gap-2 shadow-2xs"
+                        >
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-bold text-xs text-sky-700 bg-sky-50 px-1.5 py-0.5 rounded border border-sky-100">
+                                {b.bankName}
+                              </span>
+                              <span className="text-xs font-mono font-bold text-slate-900">
+                                {b.accountNumber}
+                              </span>
+                            </div>
+                            <div className="text-[10px] text-slate-500 mt-0.5">
+                              a.n {b.holderName}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleCopyAccount(b.accountNumber)}
+                            className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 hover:text-slate-900 transition flex-shrink-0 cursor-pointer"
+                            title="Salin Nomor Rekening"
+                          >
+                            {copiedAccount === b.accountNumber ? (
+                              <Check className="w-3.5 h-3.5 text-emerald-600" />
+                            ) : (
+                              <Copy className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-slate-500 italic">
+                      * Silakan transfer nominal <strong>{paymentType === 'dp_50' ? `DP Rp ${Math.round(grandTotal * 0.5).toLocaleString('id-ID')}` : `Lunas Rp ${grandTotal.toLocaleString('id-ID')}`}</strong> ke rekening resmi di atas. Bukti transfer dapat dilampirkan langsung saat WhatsApp terbuka.
+                    </p>
                   </div>
                 </div>
 
@@ -742,6 +996,51 @@ RINCIAN BIAYA:
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Added to Cart Success Notification Modal */}
+      {showAddedToCartModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-150">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-5 sm:p-6 border border-slate-200 text-center space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-xs">
+              <CheckCircle2 className="w-6 h-6" />
+            </div>
+            <div>
+              <h4 className="text-base font-bold text-slate-900">
+                Kaos Berhasil Masuk Keranjang!
+              </h4>
+              <p className="text-xs text-slate-500 mt-1">
+                Desain ({state.color.name}, {state.quantity} pcs) telah tersimpan di keranjang belanja Anda.
+              </p>
+            </div>
+
+            <div className="pt-2 flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAddedToCartModal(false);
+                  if (onOpenCart) onOpenCart();
+                }}
+                className="w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition cursor-pointer"
+              >
+                <ShoppingBag className="w-4 h-4 text-sky-400" />
+                <span>Lihat Keranjang & Checkout</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAddedToCartModal(false);
+                  if (onStartNewDesign) onStartNewDesign();
+                }}
+                className="w-full py-2.5 px-4 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
+              >
+                <Plus className="w-4 h-4 text-slate-400" />
+                <span>+ Buat Desain Kaos Baru Lainnya</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

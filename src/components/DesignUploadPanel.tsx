@@ -1,7 +1,13 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import type { CustomTShirtState, PlacedDesign, PresetPlacement, PrintZonePreset } from '../types';
 import { PRINT_ZONE_PRESETS, SAMPLE_ARTWORKS } from '../data/mockData';
 import { AiDesignGenerator } from './AiDesignGenerator';
+import { TextDesignGenerator } from './TextDesignGenerator';
+import {
+  analyzeImageForPrint,
+  autoAdjustImageForPrint,
+  type PrintQualityReport,
+} from '../services/imageOptimizer';
 import {
   Upload,
   Sparkles,
@@ -12,6 +18,11 @@ import {
   Undo2,
   Layers,
   CheckCircle2,
+  ShieldAlert,
+  Zap,
+  RefreshCw,
+  AlertTriangle,
+  Type,
 } from 'lucide-react';
 
 interface DesignUploadPanelProps {
@@ -25,9 +36,44 @@ export const DesignUploadPanel: React.FC<DesignUploadPanelProps> = ({
   printZones = PRINT_ZONE_PRESETS,
   onUpdateDesign,
 }) => {
-  const [sourceMode, setSourceMode] = useState<'upload' | 'ai'>('upload');
+  const [sourceMode, setSourceMode] = useState<'upload' | 'text' | 'ai'>('upload');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const activeDesign = state.designs[state.activeView] || null;
+
+  // Print Quality State
+  const [qualityReport, setQualityReport] = useState<PrintQualityReport | null>(null);
+  const [isOptimizing, setIsOptimizing] = useState(false);
+  const [rejectedFile, setRejectedFile] = useState<{
+    fileName: string;
+    width: number;
+    height: number;
+    url: string;
+  } | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  // Analyze active image on view or image change
+  useEffect(() => {
+    let isMounted = true;
+    if (activeDesign?.imageUrl) {
+      analyzeImageForPrint(activeDesign.imageUrl)
+        .then((report) => {
+          if (isMounted) setQualityReport(report);
+        })
+        .catch(() => {
+          if (isMounted) setQualityReport(null);
+        });
+    } else {
+      setQualityReport(null);
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [activeDesign?.imageUrl]);
 
   // Filter presets for the active view (mirrored for right sleeve)
   const currentPresets = printZones.filter((p) => {
@@ -50,14 +96,77 @@ export const DesignUploadPanel: React.FC<DesignUploadPanelProps> = ({
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       const url = event.target?.result as string;
-      const defaultPreset = currentPresets[0];
 
+      try {
+        const report = await analyzeImageForPrint(url);
+        // Validasi Standar Percetakan: Tolak otomatis jika di bawah 300px
+        if (report.score === 'rejected') {
+          setRejectedFile({
+            fileName: file.name,
+            width: report.width,
+            height: report.height,
+            url,
+          });
+          return;
+        }
+
+        const defaultPreset = currentPresets[0];
+        onUpdateDesign({
+          imageUrl: url,
+          originalImageUrl: url,
+          fileName: file.name,
+          zonePreset: defaultPreset.id,
+          x: defaultPreset.defaultX,
+          y: defaultPreset.defaultY,
+          scale: 1,
+          rotation: 0,
+          aspectRatio: 1,
+          wrinkleIntensity: 0.92,
+          blendMode: 'normal',
+          cornerRadius: 0,
+        });
+      } catch {
+        // Fallback jika analisis error
+        const defaultPreset = currentPresets[0];
+        onUpdateDesign({
+          imageUrl: url,
+          originalImageUrl: url,
+          fileName: file.name,
+          zonePreset: defaultPreset.id,
+          x: defaultPreset.defaultX,
+          y: defaultPreset.defaultY,
+          scale: 1,
+          rotation: 0,
+          aspectRatio: 1,
+          wrinkleIntensity: 0.92,
+          blendMode: 'normal',
+          cornerRadius: 0,
+        });
+      }
+    };
+    reader.readAsDataURL(file);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  // Auto-Adjust file yang sebelumnya ditolak karena resolusi rendah
+  const handleAutoAdjustRejected = async () => {
+    if (!rejectedFile) return;
+    setIsOptimizing(true);
+    try {
+      const res = await autoAdjustImageForPrint(rejectedFile.url, {
+        upscale: true,
+        sharpen: true,
+        removeWhiteBg: true,
+        boostContrast: true,
+      });
+
+      const defaultPreset = currentPresets[0];
       onUpdateDesign({
-        imageUrl: url,
-        originalImageUrl: url,
-        fileName: file.name,
+        imageUrl: res.enhancedUrl,
+        originalImageUrl: rejectedFile.url,
+        fileName: `${rejectedFile.fileName} (Auto-Enhanced)`,
         zonePreset: defaultPreset.id,
         x: defaultPreset.defaultX,
         y: defaultPreset.defaultY,
@@ -67,10 +176,55 @@ export const DesignUploadPanel: React.FC<DesignUploadPanelProps> = ({
         wrinkleIntensity: 0.92,
         blendMode: 'normal',
         cornerRadius: 0,
+        isAutoAdjusted: true,
       });
-    };
-    reader.readAsDataURL(file);
-    if (fileInputRef.current) fileInputRef.current.value = '';
+
+      setRejectedFile(null);
+      showToast('⚡ Resolusi berhasil ditingkatkan & dipertajam ke standar cetak sablon!');
+    } catch {
+      alert('Gagal meningkatkan resolusi file secara otomatis.');
+    } finally {
+      setIsOptimizing(false);
+    }
+  };
+
+  // Auto-Adjust desain aktif
+  const handleAutoAdjustActive = async () => {
+    if (!activeDesign) return;
+    setIsOptimizing(true);
+    try {
+      const targetSource = activeDesign.originalImageUrl || activeDesign.imageUrl;
+      const res = await autoAdjustImageForPrint(targetSource, {
+        upscale: true,
+        sharpen: true,
+        removeWhiteBg: true,
+        boostContrast: true,
+      });
+
+      onUpdateDesign({
+        ...activeDesign,
+        imageUrl: res.enhancedUrl,
+        originalImageUrl: targetSource,
+        isAutoAdjusted: true,
+      });
+
+      showToast('⚡ Berhasil di-adjust! Resolusi ditingkatkan, garis dipertajam, dan background disesuaikan.');
+    } catch {
+      alert('Gagal melakukan optimasi gambar otomatis.');
+    } finally {
+      setIsOptimizing(false);
+    }
+  };
+
+  // Kembalikan ke file asli
+  const handleRestoreOriginal = () => {
+    if (!activeDesign || !activeDesign.originalImageUrl) return;
+    onUpdateDesign({
+      ...activeDesign,
+      imageUrl: activeDesign.originalImageUrl,
+      isAutoAdjusted: false,
+    });
+    showToast('Gambar dikembalikan ke file asli.');
   };
 
   const handleApplyAiDesign = (dataUrl: string, promptName: string) => {
@@ -190,23 +344,14 @@ export const DesignUploadPanel: React.FC<DesignUploadPanelProps> = ({
         originalImageUrl: activeDesign.originalImageUrl || activeDesign.imageUrl,
         imageUrl: transparentDataUrl,
       });
+      showToast('🪄 Background berhasil dihapus menjadi transparan!');
     };
     img.src = activeDesign.imageUrl;
   };
 
-  // Restore Original Background
-  const handleRestoreBackground = () => {
-    if (!activeDesign || !activeDesign.originalImageUrl) return;
-    onUpdateDesign({
-      ...activeDesign,
-      imageUrl: activeDesign.originalImageUrl,
-      originalImageUrl: undefined,
-    });
-  };
-
   return (
     <div className="space-y-5">
-      {/* Method Switcher Tabs: File Upload vs AI Generator */}
+      {/* Method Switcher Tabs: File Upload vs Text Generator vs AI Generator */}
       <div className="flex items-center p-1 bg-slate-100 rounded-2xl border border-slate-200">
         <button
           type="button"
@@ -218,7 +363,20 @@ export const DesignUploadPanel: React.FC<DesignUploadPanelProps> = ({
           }`}
         >
           <Upload className="w-3.5 h-3.5" />
-          <span>Upload File Sendiri</span>
+          <span>Upload File</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setSourceMode('text')}
+          className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+            sourceMode === 'text'
+              ? 'bg-white text-sky-600 shadow-xs'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          <Type className="w-3.5 h-3.5 text-sky-600" />
+          <span>Ketik Teks</span>
         </button>
 
         <button
@@ -231,11 +389,11 @@ export const DesignUploadPanel: React.FC<DesignUploadPanelProps> = ({
           }`}
         >
           <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-          <span>Buat Desain AI</span>
+          <span>Desain AI</span>
         </button>
       </div>
 
-      {/* Mode Content: File Upload (Prioritized) vs AI Generator */}
+      {/* Mode Content: File Upload vs Text Generator vs AI Generator */}
       {sourceMode === 'upload' ? (
         /* Mode: Manual File Upload */
         <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl">
@@ -266,6 +424,12 @@ export const DesignUploadPanel: React.FC<DesignUploadPanelProps> = ({
             </span>
           </button>
         </div>
+      ) : sourceMode === 'text' ? (
+        /* Mode: Text Generator */
+        <TextDesignGenerator
+          onApplyDesign={handleApplyAiDesign}
+          activeView={state.activeView}
+        />
       ) : (
         /* Mode: AI Generator */
         <AiDesignGenerator
@@ -274,11 +438,12 @@ export const DesignUploadPanel: React.FC<DesignUploadPanelProps> = ({
         />
       )}
 
-      {/* Active Design Badge & Quick Actions */}
+      {/* Active Design Badge, Print Quality Indicator & Quick Actions */}
       {activeDesign && (
-        <div className="p-3 bg-white border border-slate-200 rounded-2xl space-y-2">
-          <div className="flex items-center justify-between text-[11px] bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200/80">
-            <span className="truncate max-w-[200px] text-slate-700 font-mono font-medium">
+        <div className="p-3.5 bg-white border border-slate-200 rounded-2xl space-y-3 shadow-xs">
+          {/* File Name & Status */}
+          <div className="flex items-center justify-between text-[11px] bg-slate-50 px-2.5 py-1.5 rounded-xl border border-slate-200/80">
+            <span className="truncate max-w-[190px] text-slate-700 font-mono font-medium">
               📎 {activeDesign.fileName}
             </span>
             <span className="text-emerald-600 font-bold flex items-center gap-1">
@@ -286,28 +451,129 @@ export const DesignUploadPanel: React.FC<DesignUploadPanelProps> = ({
             </span>
           </div>
 
-          {/* Quick Background Remover Button */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleRemoveBackground}
-              className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-lg text-[11px] font-bold shadow-xs transition cursor-pointer"
-              title="Hapus background warna/putih otomatis agar gambar menyatu dengan kaos"
+          {/* Standar Percetakan (Print Readiness Report) */}
+          {qualityReport && (
+            <div
+              className={`p-3 rounded-xl border transition-all text-xs space-y-2 ${
+                qualityReport.score === 'excellent'
+                  ? 'bg-emerald-50/70 border-emerald-200'
+                  : qualityReport.score === 'good'
+                  ? 'bg-sky-50/70 border-sky-200'
+                  : 'bg-amber-50/80 border-amber-200'
+              }`}
             >
-              <Wand2 className="w-3.5 h-3.5" />
-              <span>Hapus Background Otomatis</span>
-            </button>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 font-bold text-slate-800 text-[11px]">
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      qualityReport.score === 'excellent'
+                        ? 'bg-emerald-500'
+                        : qualityReport.score === 'good'
+                        ? 'bg-sky-500'
+                        : 'bg-amber-500 animate-pulse'
+                    }`}
+                  />
+                  <span>Standar Percetakan:</span>
+                </div>
+                <span
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${qualityReport.badgeColor}`}
+                >
+                  {qualityReport.score === 'excellent'
+                    ? '✓ Siap Cetak HD'
+                    : qualityReport.score === 'good'
+                    ? '✓ Standar Sablon A4'
+                    : '⚠️ Perlu Optimasi'}
+                </span>
+              </div>
 
-            {activeDesign.originalImageUrl && (
+              <div className="flex items-center justify-between text-[11px] text-slate-600">
+                <span>
+                  Resolusi: <strong>{qualityReport.width} × {qualityReport.height} px</strong>
+                </span>
+                <span className="font-mono text-[10px] bg-white/80 px-1.5 py-0.5 rounded border border-slate-200/60 text-slate-500">
+                  {qualityReport.megapixels} MP
+                </span>
+              </div>
+
+              {qualityReport.hasSolidBackground && (
+                <div className="text-[10px] text-amber-800 bg-amber-100/70 px-2 py-1 rounded-lg flex items-center gap-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5 text-amber-600 flex-shrink-0" />
+                  <span>Background kotak putih terdeteksi (bisa disesuaikan otomatis).</span>
+                </div>
+              )}
+
+              {/* Action Buttons: ⚡ Auto-Adjust Standar Cetak & 🪄 Hapus Background */}
+              <div className="pt-1 flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={handleAutoAdjustActive}
+                  disabled={isOptimizing}
+                  className="w-full flex items-center justify-center gap-1.5 py-2 px-3 bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer disabled:opacity-50"
+                  title="Tingkatkan resolusi gambar, pertajam garis detail, dan sesuaikan background otomatis"
+                >
+                  {isOptimizing ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Mengoptimalkan...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="w-3.5 h-3.5 text-amber-300" />
+                      <span>⚡ Auto-Adjust Standar Cetak</span>
+                    </>
+                  )}
+                </button>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleRemoveBackground}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-2 px-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer"
+                    title="Hapus background warna/putih otomatis agar gambar menyatu dengan kaos"
+                  >
+                    <Wand2 className="w-3.5 h-3.5" />
+                    <span>Hapus Background Otomatis</span>
+                  </button>
+
+                  {(activeDesign.isAutoAdjusted || activeDesign.originalImageUrl) && (
+                    <button
+                      type="button"
+                      onClick={handleRestoreOriginal}
+                      className="flex items-center justify-center gap-1 py-2 px-3 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-xl text-xs font-semibold transition cursor-pointer"
+                      title="Kembalikan ke gambar asli"
+                    >
+                      <Undo2 className="w-3.5 h-3.5" />
+                      <span>Asli</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Quick Actions jika laporan kualitas sedang dimuat */}
+          {!qualityReport && (
+            <div className="flex items-center gap-2">
               <button
-                onClick={handleRestoreBackground}
-                className="flex items-center justify-center gap-1 py-1.5 px-2.5 bg-slate-150 hover:bg-slate-200 text-slate-700 rounded-lg text-[11px] font-semibold transition cursor-pointer"
-                title="Kembalikan background kotak asli"
+                type="button"
+                onClick={handleRemoveBackground}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2 px-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-xl text-xs font-bold shadow-xs transition cursor-pointer"
               >
-                <Undo2 className="w-3.5 h-3.5" />
-                <span>Undo</span>
+                <Wand2 className="w-3.5 h-3.5" />
+                <span>Hapus Background Otomatis</span>
               </button>
-            )}
-          </div>
+              {activeDesign.originalImageUrl && (
+                <button
+                  type="button"
+                  onClick={handleRestoreOriginal}
+                  className="flex items-center justify-center gap-1 py-2 px-2.5 bg-slate-150 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition cursor-pointer"
+                >
+                  <Undo2 className="w-3.5 h-3.5" />
+                  <span>Undo</span>
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -559,6 +825,74 @@ export const DesignUploadPanel: React.FC<DesignUploadPanelProps> = ({
           ))}
         </div>
       </div>
+
+      {/* Modal Penolakan Gambar (Di Bawah Standar Percetakan) */}
+      {rejectedFile && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-rose-200 animate-in zoom-in-95 duration-150">
+            <div className="w-14 h-14 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto mb-3.5 shadow-xs">
+              <ShieldAlert className="w-7 h-7" />
+            </div>
+
+            <h3 className="text-base font-bold text-slate-900 text-center">
+              Standar Percetakan Tidak Terpenuhi
+            </h3>
+
+            <p className="text-xs text-slate-600 text-center mt-2 leading-relaxed">
+              File <strong className="text-slate-800">{rejectedFile.fileName}</strong> hanya berukuran{' '}
+              <strong className="text-rose-600">{rejectedFile.width} × {rejectedFile.height} px</strong>.
+              Resolusi ini terlalu kecil dan akan menghasilkan sablon yang sangat pecah / buram pada kaos.
+            </p>
+
+            <div className="mt-4 p-3 bg-amber-50 rounded-2xl border border-amber-200 text-[11px] text-amber-900 flex items-start gap-2.5">
+              <Zap className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+              <span>
+                <strong>Solusi Otomatis:</strong> Sistem kami dapat meningkatkan skala resolusi, menajamkan garis sablon, dan merapikan background secara otomatis.
+              </span>
+            </div>
+
+            <div className="mt-5 flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={handleAutoAdjustRejected}
+                disabled={isOptimizing}
+                className="w-full py-2.5 px-4 bg-gradient-to-r from-indigo-600 to-sky-600 hover:from-indigo-700 hover:to-sky-700 text-white font-bold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 transition cursor-pointer disabled:opacity-50"
+              >
+                {isOptimizing ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>Meningkatkan Kualitas Cetak...</span>
+                  </>
+                ) : (
+                  <>
+                    <Zap className="w-3.5 h-3.5 text-amber-300" />
+                    <span>⚡ Auto-Adjust ke Standar Cetak</span>
+                  </>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setRejectedFile(null);
+                  setTimeout(() => fileInputRef.current?.click(), 100);
+                }}
+                className="w-full py-2 px-3 text-slate-600 hover:text-slate-900 text-xs font-semibold rounded-xl border border-slate-200 hover:bg-slate-50 transition cursor-pointer"
+              >
+                Pilih File Gambar Lain
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Success Toast */}
+      {toastMessage && (
+        <div className="fixed bottom-24 right-4 sm:right-6 z-50 bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-xl flex items-center gap-2 text-xs font-semibold animate-in slide-in-from-bottom duration-200 border border-slate-700">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
     </div>
   );
 };

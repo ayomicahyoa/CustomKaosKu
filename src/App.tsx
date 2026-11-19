@@ -24,11 +24,15 @@ import { ConfiguratorSidebar } from './components/ConfiguratorSidebar';
 import { PriceSummaryBar } from './components/PriceSummaryBar';
 import { AdminDashboard } from './components/AdminDashboard';
 import { OrderTrackingPage } from './components/OrderTrackingPage';
+import { CartModal } from './components/CartModal';
+import { UserAuthModal } from './components/UserAuthModal';
+import { UserHistoryModal } from './components/UserHistoryModal';
+import { subscribeToAuth, signOutUser } from './services/authService';
+import type { AppUser } from './types';
 import {
   Image,
   Settings,
   CheckCircle2,
-  Sparkles,
   ChevronDown,
 } from 'lucide-react';
 
@@ -95,6 +99,17 @@ export function App() {
   const [activeTab, setActiveTab] = useState<'design' | 'config'>('config');
   const [showGuides, setShowGuides] = useState<boolean>(false); // By default false (mati)
   const [downloadSuccessToast, setDownloadSuccessToast] = useState(false);
+  const [isCartOpen, setIsCartOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<AppUser | null>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isUserHistoryOpen, setIsUserHistoryOpen] = useState(false);
+
+  useEffect(() => {
+    const unsub = subscribeToAuth((user) => {
+      setCurrentUser(user);
+    });
+    return unsub;
+  }, []);
 
   // Standalone Route Navigation: studio vs admin vs tracking
   const [currentRoute, setCurrentRoute] = useState<AppRoute>(getInitialRoute);
@@ -222,7 +237,7 @@ export function App() {
     });
   };
 
-  // High Resolution Mockup Exporter with "CustomKaosWeb" Watermark & Exact Aspect Ratio
+  // High Resolution Mockup Exporter with "Custom Apparel Bandung.id" Watermark & Exact Aspect Ratio
   const handleExportMockup = () => {
     const canvas = document.createElement('canvas');
     canvas.width = 1200;
@@ -321,7 +336,7 @@ export function App() {
         ctx.globalAlpha = 1.0;
 
         // ============================================
-        // WATERMARK: "CustomKaosWeb" (Besar & Tebal)
+        // WATERMARK: "Custom Apparel Bandung.id" (Besar & Tebal)
         // ============================================
         // 1. Center Diagonal Watermark (Extra Large & Bold)
         ctx.save();
@@ -336,13 +351,13 @@ export function App() {
         ctx.strokeStyle = state.color.isDark
           ? 'rgba(0, 0, 0, 0.40)'
           : 'rgba(255, 255, 255, 0.65)';
-        ctx.strokeText('CustomKaosWeb', 0, 0);
+        ctx.strokeText('Custom Apparel Bandung.id', 0, 0);
 
         // Core fill (solid & prominent)
         ctx.fillStyle = state.color.isDark
           ? 'rgba(255, 255, 255, 0.42)'
           : 'rgba(15, 23, 42, 0.36)';
-        ctx.fillText('CustomKaosWeb', 0, 0);
+        ctx.fillText('Custom Apparel Bandung.id', 0, 0);
         ctx.restore();
 
         // 2. Top-Right Watermark Stamp
@@ -350,7 +365,7 @@ export function App() {
         ctx.font = '900 28px system-ui, -apple-system, sans-serif';
         ctx.fillStyle = 'rgba(71, 85, 105, 0.75)';
         ctx.textAlign = 'right';
-        ctx.fillText('CustomKaosWeb', canvas.width - 60, 75);
+        ctx.fillText('CustomApparel', canvas.width - 60, 75);
         ctx.restore();
 
         // 3. Bottom Information Bar
@@ -359,7 +374,7 @@ export function App() {
         ctx.fillStyle = '#64748b';
         ctx.textAlign = 'left';
         ctx.fillText(
-          `CustomKaosWeb • ${state.color.name} (${state.neckType === 'round' ? 'Round Neck' : 'V-Neck'}, ${state.sleeveType === 'short' ? 'Short Sleeve' : 'Long Sleeve'})`,
+          `Custom Apparel Bandung.id • ${state.color.name} (${state.neckType === 'round' ? 'Round Neck' : 'V-Neck'}, ${state.sleeveType === 'short' ? 'Short Sleeve' : 'Long Sleeve'})`,
           60,
           canvas.height - 45
         );
@@ -604,31 +619,14 @@ export function App() {
       <Navbar
         onReset={handleReset}
         onNavigateToTracking={() => navigateTo('tracking')}
+        onOpenCart={() => setIsCartOpen(true)}
+        user={currentUser}
+        onOpenAuth={() => setIsAuthModalOpen(true)}
+        onOpenUserHistory={() => setIsUserHistoryOpen(true)}
       />
 
       {/* Main Studio Area */}
       <main className="max-w-7xl mx-auto w-full px-3 sm:px-4 lg:px-6 py-3 sm:py-6 flex-1 flex flex-col">
-        {/* Notice Banner */}
-        <div className="mb-3 sm:mb-4 bg-gradient-to-r from-sky-500/10 via-indigo-500/10 to-transparent p-2.5 sm:p-3 rounded-xl sm:rounded-2xl border border-sky-200/60 flex items-center justify-between text-xs text-slate-700">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse flex-shrink-0" />
-            <span className="font-semibold text-slate-900 text-[11px] sm:text-xs">
-              Studio Foto Kaos Asli
-            </span>
-            <span className="hidden sm:inline text-[11px] text-slate-600">
-              Tekstur katun, kerutan lipatan 3D, dan bayangan kain nyata otomatis menyesuaikan warna kain.
-            </span>
-          </div>
-          <div className="hidden md:flex items-center gap-3 text-slate-500 text-[11px]">
-            <span className="flex items-center gap-1">
-              <Sparkles className="w-3 h-3 text-amber-500" />
-              Teknik: <strong className="text-slate-800">{state.technique.name}</strong>
-            </span>
-            <span>•</span>
-            <span>Bahan: <strong className="text-slate-800">{state.material.name}</strong></span>
-          </div>
-        </div>
-
         {/* Studio Workspace Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 items-start flex-1">
           {/* LEFT: Interactive Mockup Canvas (7 cols on lg) */}
@@ -795,7 +793,43 @@ export function App() {
         onUpdateQuantity={handleUpdateQuantityFromBar}
         onExportMockup={handleExportMockup}
         onCaptureAllMockups={handleCaptureAllMockups}
+        onOpenCart={() => setIsCartOpen(true)}
+        onStartNewDesign={handleReset}
       />
+
+      {/* Cart Modal */}
+      <CartModal
+        isOpen={isCartOpen}
+        onClose={() => setIsCartOpen(false)}
+        onStartNewDesign={handleReset}
+        user={currentUser}
+        onOpenAuth={() => setIsAuthModalOpen(true)}
+      />
+
+      {/* User Login / Register Modal */}
+      <UserAuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onSuccess={(u) => {
+          setCurrentUser(u);
+          setIsAuthModalOpen(false);
+        }}
+      />
+
+      {/* User Order History & Saved Designs Modal */}
+      {currentUser && (
+        <UserHistoryModal
+          isOpen={isUserHistoryOpen}
+          onClose={() => setIsUserHistoryOpen(false)}
+          user={currentUser}
+          onLogout={signOutUser}
+          onOpenCart={() => setIsCartOpen(true)}
+          onSelectOrderToTrack={(orderId) => {
+            window.location.hash = `/cekorderan?id=${orderId}`;
+            navigateTo('tracking');
+          }}
+        />
+      )}
 
       {/* Success Notification Toast */}
       {downloadSuccessToast && (
