@@ -19,6 +19,8 @@ import {
 import { Navbar } from './components/Navbar';
 import { TShirtCanvas } from './components/TShirtCanvas';
 import { ViewAngleSwitcher } from './components/ViewAngleSwitcher';
+import { ProductTypeDropdown } from './components/ProductTypeDropdown';
+import { PRODUCT_TYPES } from './data/mockData';
 import { DesignUploadPanel } from './components/DesignUploadPanel';
 import { ConfiguratorSidebar } from './components/ConfiguratorSidebar';
 import { PriceSummaryBar } from './components/PriceSummaryBar';
@@ -82,6 +84,7 @@ export function App() {
   };
 
   const [state, setState] = useState<CustomTShirtState>({
+    productType: 'tshirt-round',
     neckType: 'round',
     sleeveType: 'short',
     color: db.colors[0], // First color from DB
@@ -199,6 +202,7 @@ export function App() {
 
   const handleReset = () => {
     setState({
+      productType: 'tshirt-round',
       neckType: 'round',
       sleeveType: 'short',
       color: db.colors[0],
@@ -218,6 +222,16 @@ export function App() {
       ...prev,
       sizeBreakdown: newBreakdown,
       quantity: Math.max(1, total),
+    }));
+  };
+
+  const handleSelectProductType = (productTypeId: string) => {
+    const pt = PRODUCT_TYPES.find((p) => p.id === productTypeId) || PRODUCT_TYPES[0];
+    setState((prev) => ({
+      ...prev,
+      productType: pt.id,
+      neckType: pt.neckType,
+      sleeveType: pt.id === 'hoodie-basic' ? 'long' : (pt.supportsLongSleeve === false ? 'short' : prev.sleeveType),
     }));
   };
 
@@ -261,10 +275,39 @@ export function App() {
 
     const baseUrl = import.meta.env.BASE_URL;
     const getPhotoPath = () => {
+      // 0. Basic Hoodie Pullover
+      if (state.productType === 'hoodie-basic') {
+        if (state.activeView === 'front') return `${baseUrl}mockups/hoodie-front.png`;
+        if (state.activeView === 'back') return `${baseUrl}mockups/hoodie-back.png`;
+        if (state.activeView === 'sleeve-left') return `${baseUrl}mockups/hoodie-left.png`;
+        return `${baseUrl}mockups/hoodie-right.png`;
+      }
+
+      // 1. T-Shirt Boxy Oversized
+      if (state.productType === 'tshirt-boxy') {
+        if (state.activeView === 'front') return `${baseUrl}mockups/tshirt-boxy-front.png`;
+        if (state.activeView === 'back') return `${baseUrl}mockups/tshirt-boxy-back.png`;
+        if (state.activeView === 'sleeve-left') return `${baseUrl}mockups/tshirt-boxy-left.png`;
+        return `${baseUrl}mockups/tshirt-boxy-right.png`;
+      }
+
+      // 2. Long Sleeve Models
+      if (state.sleeveType === 'long') {
+        if (state.activeView === 'front') {
+          return state.neckType === 'v-neck'
+            ? `${baseUrl}mockups/tshirt-vneck-longsleeve-front.png`
+            : `${baseUrl}mockups/tshirt-longsleeve-front.png`;
+        }
+        if (state.activeView === 'back') return `${baseUrl}mockups/tshirt-longsleeve-back.png`;
+        if (state.activeView === 'sleeve-left') return `${baseUrl}mockups/tshirt-longsleeve-left.png`;
+        return `${baseUrl}mockups/tshirt-longsleeve-right.png`;
+      }
+
+      // 3. Short Sleeve Standard (Round & V-Neck)
       if (state.activeView === 'front') {
-        return state.neckType === 'round'
-          ? `${baseUrl}mockups/tshirt-front-round-real.png`
-          : `${baseUrl}mockups/tshirt-front-vneck-real.png`;
+        return state.neckType === 'v-neck'
+          ? `${baseUrl}mockups/tshirt-vneck-front.png`
+          : `${baseUrl}mockups/tshirt-front-round-real.png`;
       }
       if (state.activeView === 'back') {
         return `${baseUrl}mockups/tshirt-back-real.png`;
@@ -481,10 +524,39 @@ export function App() {
 
       const baseUrl = import.meta.env.BASE_URL;
       const getPath = () => {
+        // 0. Basic Hoodie Pullover
+        if (state.productType === 'hoodie-basic') {
+          if (view === 'front') return `${baseUrl}mockups/hoodie-front.png`;
+          if (view === 'back') return `${baseUrl}mockups/hoodie-back.png`;
+          if (view === 'sleeve-left') return `${baseUrl}mockups/hoodie-left.png`;
+          return `${baseUrl}mockups/hoodie-right.png`;
+        }
+
+        // 1. T-Shirt Boxy Oversized
+        if (state.productType === 'tshirt-boxy') {
+          if (view === 'front') return `${baseUrl}mockups/tshirt-boxy-front.png`;
+          if (view === 'back') return `${baseUrl}mockups/tshirt-boxy-back.png`;
+          if (view === 'sleeve-left') return `${baseUrl}mockups/tshirt-boxy-left.png`;
+          return `${baseUrl}mockups/tshirt-boxy-right.png`;
+        }
+
+        // 2. Long Sleeve Models
+        if (state.sleeveType === 'long') {
+          if (view === 'front') {
+            return state.neckType === 'v-neck'
+              ? `${baseUrl}mockups/tshirt-vneck-longsleeve-front.png`
+              : `${baseUrl}mockups/tshirt-longsleeve-front.png`;
+          }
+          if (view === 'back') return `${baseUrl}mockups/tshirt-longsleeve-back.png`;
+          if (view === 'sleeve-left') return `${baseUrl}mockups/tshirt-longsleeve-left.png`;
+          return `${baseUrl}mockups/tshirt-longsleeve-right.png`;
+        }
+
+        // 3. Short Sleeve Standard (Round & V-Neck)
         if (view === 'front')
-          return state.neckType === 'round'
-            ? `${baseUrl}mockups/tshirt-front-round-real.png`
-            : `${baseUrl}mockups/tshirt-front-vneck-real.png`;
+          return state.neckType === 'v-neck'
+            ? `${baseUrl}mockups/tshirt-vneck-front.png`
+            : `${baseUrl}mockups/tshirt-front-round-real.png`;
         if (view === 'back') return `${baseUrl}mockups/tshirt-back-real.png`;
         if (view === 'sleeve-left') return `${baseUrl}mockups/tshirt-sleeve-left-real.png`;
         return `${baseUrl}mockups/tshirt-sleeve-right-real.png`;
@@ -631,11 +703,19 @@ export function App() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6 items-start flex-1">
           {/* LEFT: Interactive Mockup Canvas (7 cols on lg) */}
           <div className="lg:col-span-7 flex flex-col items-center gap-3 sm:gap-4">
+            {/* Product Type Dropdown (Right where user circled!) */}
+            <ProductTypeDropdown
+              productTypes={PRODUCT_TYPES}
+              activeProductTypeId={state.productType || 'tshirt-round'}
+              onSelectProductType={handleSelectProductType}
+            />
+
             {/* View angle selector */}
             <ViewAngleSwitcher
               activeView={state.activeView}
               onSelectView={(v: ViewAngle) => setState((prev) => ({ ...prev, activeView: v }))}
               designs={state.designs}
+              sleeveType={state.sleeveType}
             />
 
             {/* The Canvas with dynamic printZones */}
@@ -685,6 +765,8 @@ export function App() {
                     materials={db.materials}
                     techniques={db.techniques}
                     colors={db.colors}
+                    productTypes={PRODUCT_TYPES}
+                    onChangeProductType={handleSelectProductType}
                     onChangeNeck={(neck: NeckType) => setState((prev) => ({ ...prev, neckType: neck }))}
                     onChangeSleeve={(sleeve: SleeveType) => setState((prev) => ({ ...prev, sleeveType: sleeve }))}
                     onChangeColor={(color: ShirtColor) => setState((prev) => ({ ...prev, color }))}
@@ -737,6 +819,8 @@ export function App() {
                       materials={db.materials}
                       techniques={db.techniques}
                       colors={db.colors}
+                      productTypes={PRODUCT_TYPES}
+                      onChangeProductType={handleSelectProductType}
                       onChangeNeck={(neck: NeckType) => setState((prev) => ({ ...prev, neckType: neck }))}
                       onChangeSleeve={(sleeve: SleeveType) => setState((prev) => ({ ...prev, sleeveType: sleeve }))}
                       onChangeColor={(color: ShirtColor) => setState((prev) => ({ ...prev, color }))}

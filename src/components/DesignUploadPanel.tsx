@@ -588,9 +588,21 @@ export const DesignUploadPanel: React.FC<DesignUploadPanelProps> = ({
           </span>
         </div>
 
+        {(state.activeView === 'sleeve-left' || state.activeView === 'sleeve-right') && (
+          <div className="mb-2.5 p-2 bg-sky-50 border border-sky-200/80 rounded-xl flex items-center justify-between text-[11px] text-sky-900">
+            <span className="font-semibold">
+              Sisi Lengan: <strong className="text-sky-700">{state.sleeveType === 'long' ? 'Lengan Panjang' : 'Lengan Pendek'}</strong>
+            </span>
+            <span className="text-[10px] text-sky-700 bg-white px-2 py-0.5 rounded-md border border-sky-200 font-medium">
+              {state.sleeveType === 'long' ? 'Full Arm & Manset Tersedia' : 'Patch & Vertikal Standar'}
+            </span>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {currentPresets.map((preset) => {
             const isSelected = activeDesign?.zonePreset === preset.id;
+            const isLongSleevePreset = preset.id === 'sleeve-long-full' || preset.id === 'sleeve-wrist';
             return (
               <button
                 key={preset.id}
@@ -601,13 +613,20 @@ export const DesignUploadPanel: React.FC<DesignUploadPanelProps> = ({
                     : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
                 }`}
               >
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-1 flex-wrap">
                   <span className={`font-bold ${isSelected ? 'text-sky-900' : 'text-slate-800'}`}>
                     {preset.name}
                   </span>
-                  <span className="text-[10px] font-mono text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded">
-                    {preset.dimensions}
-                  </span>
+                  <div className="flex items-center gap-1">
+                    {isLongSleevePreset && (
+                      <span className="text-[9px] font-bold text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-200">
+                        Panjang
+                      </span>
+                    )}
+                    <span className="text-[10px] font-mono text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded">
+                      {preset.dimensions}
+                    </span>
+                  </div>
                 </div>
                 <p className="text-[10px] text-slate-500 mt-1 line-clamp-1">
                   {preset.description}

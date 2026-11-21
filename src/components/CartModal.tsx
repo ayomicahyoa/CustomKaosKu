@@ -225,7 +225,7 @@ export const CartModal: React.FC<CartModalProps> = ({
     selectedItems.forEach((item, index) => {
       itemsText += `
 📦 *ITEM #${index + 1} (${item.quantity} pcs)*
-• Model: ${item.neckType === 'round' ? 'O-Neck' : 'V-Neck'} (${item.sleeveType === 'short' ? 'Lengan Pendek' : 'Lengan Panjang'})
+• Model: ${item.productTypeName || (item.neckType === 'round' ? 'O-Neck' : 'V-Neck')} (${item.sleeveType === 'short' ? 'Lengan Pendek' : 'Lengan Panjang'})
 • Warna: ${item.colorName}
 • Bahan: ${item.materialName} ${item.materialGsm ? `(${item.materialGsm})` : ''}
 • Ukuran: ${item.size}
@@ -492,7 +492,7 @@ ${paymentType === 'dp_50' ? `• Sisa Pelunasan (Dibayar Saat Siap Kirim): Rp ${
                           />
                           <span>{item.colorName}</span>
                           <span className="text-[10px] text-slate-400 font-normal">
-                            ({item.neckType === 'round' ? 'O-Neck' : 'V-Neck'}, {item.sleeveType === 'short' ? 'Pendek' : 'Panjang'})
+                            ({item.productTypeName || (item.neckType === 'round' ? 'O-Neck' : 'V-Neck')}, {item.sleeveType === 'short' ? 'Pendek' : 'Panjang'})
                           </span>
                           {!isSelected && (
                             <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 px-1.5 py-0.2 rounded border border-amber-200">

@@ -7,6 +7,7 @@ import type {
   ShirtColor,
   PrintTechnique,
   ShirtSize,
+  ProductTypeOption,
 } from '../types';
 import { SHIRT_COLORS, MATERIALS, PRINT_TECHNIQUES } from '../data/mockData';
 import { Shirt, Palette, Layers, Printer, Check, Minus, Plus, Ruler } from 'lucide-react';
@@ -17,8 +18,10 @@ interface ConfiguratorSidebarProps {
   materials?: MaterialOption[];
   techniques?: PrintTechnique[];
   colors?: ShirtColor[];
-  onChangeNeck: (neck: NeckType) => void;
+  productTypes?: ProductTypeOption[];
+  onChangeNeck?: (neck: NeckType) => void;
   onChangeSleeve: (sleeve: SleeveType) => void;
+  onChangeProductType?: (id: string) => void;
   onChangeColor: (color: ShirtColor) => void;
   onChangeMaterial: (mat: MaterialOption) => void;
   onChangeTechnique: (tech: PrintTechnique) => void;
@@ -31,7 +34,6 @@ export const ConfiguratorSidebar: React.FC<ConfiguratorSidebarProps> = ({
   materials = MATERIALS,
   techniques = PRINT_TECHNIQUES,
   colors = SHIRT_COLORS,
-  onChangeNeck,
   onChangeSleeve,
   onChangeColor,
   onChangeMaterial,
@@ -97,74 +99,47 @@ export const ConfiguratorSidebar: React.FC<ConfiguratorSidebarProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* 1. Model & Kerah / Lengan */}
+      {/* 1. Model & Bentuk Kaos */}
       <div>
         <div className="flex items-center gap-1.5 text-xs font-bold text-slate-800 uppercase tracking-wider mb-2.5">
           <Shirt className="w-3.5 h-3.5 text-sky-600" />
           <span>1. Model & Bentuk Kaos</span>
         </div>
 
-        {/* Kerah (Neck) */}
-        <div className="mb-3">
-          <label className="text-xs font-semibold text-slate-600 block mb-1.5">
-            Bentuk Kerah (Neckline)
-          </label>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              onClick={() => onChangeNeck('round')}
-              className={`py-2 px-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition ${
-                state.neckType === 'round'
-                  ? 'border-sky-500 bg-sky-50 text-sky-900 shadow-xs'
-                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
-              }`}
-            >
-              <span>Round Neck (O-Neck)</span>
-              {state.neckType === 'round' && <Check className="w-3.5 h-3.5 text-sky-600" />}
-            </button>
-            <button
-              onClick={() => onChangeNeck('v-neck')}
-              className={`py-2 px-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition ${
-                state.neckType === 'v-neck'
-                  ? 'border-sky-500 bg-sky-50 text-sky-900 shadow-xs'
-                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
-              }`}
-            >
-              <span>V-Neck</span>
-              {state.neckType === 'v-neck' && <Check className="w-3.5 h-3.5 text-sky-600" />}
-            </button>
+        {/* Panjang Lengan (Hanya untuk model yang mendukung lengan panjang; Boxy & Hoodie tidak memiliki toggle lengan) */}
+        {state.productType !== 'tshirt-boxy' && state.productType !== 'hoodie-basic' && (
+          <div className="mb-3">
+            <label className="text-xs font-semibold text-slate-600 block mb-1.5">
+              Panjang Lengan
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => onChangeSleeve('short')}
+                className={`py-2 px-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                  state.sleeveType === 'short'
+                    ? 'border-sky-500 bg-sky-50 text-sky-900 shadow-xs'
+                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                }`}
+              >
+                <span>Lengan Pendek</span>
+                {state.sleeveType === 'short' && <Check className="w-3.5 h-3.5 text-sky-600" />}
+              </button>
+              <button
+                type="button"
+                onClick={() => onChangeSleeve('long')}
+                className={`py-2 px-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+                  state.sleeveType === 'long'
+                    ? 'border-sky-500 bg-sky-50 text-sky-900 shadow-xs'
+                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                }`}
+              >
+                <span>Lengan Panjang (+10k)</span>
+                {state.sleeveType === 'long' && <Check className="w-3.5 h-3.5 text-sky-600" />}
+              </button>
+            </div>
           </div>
-        </div>
-
-        {/* Lengan (Sleeve) */}
-        <div className="mb-3">
-          <label className="text-xs font-semibold text-slate-600 block mb-1.5">
-            Panjang Lengan
-          </label>
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              onClick={() => onChangeSleeve('short')}
-              className={`py-2 px-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition ${
-                state.sleeveType === 'short'
-                  ? 'border-sky-500 bg-sky-50 text-sky-900 shadow-xs'
-                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
-              }`}
-            >
-              <span>Lengan Pendek</span>
-              {state.sleeveType === 'short' && <Check className="w-3.5 h-3.5 text-sky-600" />}
-            </button>
-            <button
-              onClick={() => onChangeSleeve('long')}
-              className={`py-2 px-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition ${
-                state.sleeveType === 'long'
-                  ? 'border-sky-500 bg-sky-50 text-sky-900 shadow-xs'
-                  : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
-              }`}
-            >
-              <span>Lengan Panjang (+10k)</span>
-              {state.sleeveType === 'long' && <Check className="w-3.5 h-3.5 text-sky-600" />}
-            </button>
-          </div>
-        </div>
+        )}
 
         {/* Ukuran (Sizes Matrix & Breakdown) */}
         <div className="pt-1">

@@ -6,20 +6,30 @@ interface ViewAngleSwitcherProps {
   activeView: ViewAngle;
   onSelectView: (view: ViewAngle) => void;
   designs: CustomTShirtState['designs'];
+  sleeveType?: 'short' | 'long';
 }
 
 export const ViewAngleSwitcher: React.FC<ViewAngleSwitcherProps> = ({
   activeView,
   onSelectView,
   designs,
+  sleeveType = 'short',
 }) => {
   const [showSizeChart, setShowSizeChart] = useState(false);
 
   const views: { id: ViewAngle; label: string; sub: string }[] = [
     { id: 'front', label: 'Depan', sub: 'Front View' },
     { id: 'back', label: 'Belakang', sub: 'Back View' },
-    { id: 'sleeve-left', label: 'Lengan Kiri', sub: 'Left Arm' },
-    { id: 'sleeve-right', label: 'Lengan Kanan', sub: 'Right Arm' },
+    {
+      id: 'sleeve-left',
+      label: 'Lengan Kiri',
+      sub: sleeveType === 'long' ? 'Left Arm (Panjang)' : 'Left Arm (Pendek)',
+    },
+    {
+      id: 'sleeve-right',
+      label: 'Lengan Kanan',
+      sub: sleeveType === 'long' ? 'Right Arm (Panjang)' : 'Right Arm (Pendek)',
+    },
   ];
 
   return (

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { CustomTShirtState, PrintZonePreset, ViewAngle, CartItem } from '../types';
-import { PRINT_ZONE_PRESETS } from '../data/mockData';
+import { PRINT_ZONE_PRESETS, PRODUCT_TYPES } from '../data/mockData';
 import { addOrder } from '../services/ordersStorage';
 import { addToCart } from '../services/cartStorage';
 import { getCurrentUser } from '../services/authService';
@@ -77,8 +77,11 @@ export const PriceSummaryBar: React.FC<PriceSummaryBarProps> = ({
   };
 
   // Cost calculation
+  const activeProductType =
+    PRODUCT_TYPES.find((p) => p.id === (state.productType || 'tshirt-round')) || PRODUCT_TYPES[0];
+  const boxyExtra = activeProductType.baseExtraPrice || 0;
   const sleeveExtra = state.sleeveType === 'long' ? 10000 : 0;
-  const baseShirtCost = state.material.basePrice + sleeveExtra;
+  const baseShirtCost = state.material.basePrice + sleeveExtra + boxyExtra;
 
   // Print costs per zone
   let printCostTotal = 0;
@@ -155,7 +158,7 @@ export const PriceSummaryBar: React.FC<PriceSummaryBarProps> = ({
 • Alamat Lengkap: ${address || '-'}
 ${notes ? `• Catatan Khusus: ${notes}\n` : ''}---------------------------------------
 📋 *DETAIL KAOS (${orderCode})*
-• Model: ${state.neckType === 'round' ? 'Round Neck (O-Neck)' : 'V-Neck'} (${state.sleeveType === 'short' ? 'Lengan Pendek' : 'Lengan Panjang'})
+• Model: ${activeProductType.name} (${state.sleeveType === 'short' ? 'Lengan Pendek' : 'Lengan Panjang'})
 • Warna: ${state.color.name}
 • Bahan: ${state.material.name} (${state.material.gsm})
 • Rincian Ukuran: ${getSizeSummaryText()}
@@ -188,6 +191,8 @@ ${paymentType === 'dp_50' ? `• Sisa Pelunasan (Dibayar Saat Siap Kirim): Rp ${
       shippingCity: shippingCity || undefined,
       shippingAddress: shippingAddress || undefined,
       customerNotes: customerNotes || undefined,
+      productType: activeProductType.id,
+      productTypeName: activeProductType.name,
       neckType: state.neckType,
       sleeveType: state.sleeveType,
       colorName: state.color.name,
@@ -224,7 +229,7 @@ DATA PEMESAN:
 - Catatan: ${customerNotes || '-'}
 
 SPESIFIKASI KAOS:
-- Model: ${state.neckType === 'round' ? 'Round Neck' : 'V-Neck'} (${state.sleeveType === 'short' ? 'Lengan Pendek' : 'Lengan Panjang'})
+- Model: ${activeProductType.name} (${state.sleeveType === 'short' ? 'Lengan Pendek' : 'Lengan Panjang'})
 - Warna: ${state.color.name} (${state.color.hex})
 - Bahan: ${state.material.name} (${state.material.gsm})
 - Ukuran: ${getSizeSummaryText()}
@@ -261,6 +266,8 @@ RINCIAN BIAYA & PEMBAYARAN:
       const item: CartItem = {
         id: 'ITEM-' + Math.random().toString(36).substring(2, 9).toUpperCase(),
         createdAt: new Date().toISOString(),
+        productType: activeProductType.id,
+        productTypeName: activeProductType.name,
         neckType: state.neckType,
         sleeveType: state.sleeveType,
         colorName: state.color.name,
@@ -360,6 +367,8 @@ RINCIAN BIAYA & PEMBAYARAN:
         shippingCity: shippingCity || undefined,
         shippingAddress: shippingAddress || undefined,
         customerNotes: customerNotes || undefined,
+        productType: activeProductType.id,
+        productTypeName: activeProductType.name,
         neckType: state.neckType,
         sleeveType: state.sleeveType,
         colorName: state.color.name,

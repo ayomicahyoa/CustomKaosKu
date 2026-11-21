@@ -46,10 +46,39 @@ export const TShirtCanvas: React.FC<TShirtCanvasProps> = ({
   // Real Photo Asset Path selection
   const baseUrl = import.meta.env.BASE_URL;
   const getRealPhotoPath = () => {
+    // 0. Basic Hoodie Pullover
+    if (state.productType === 'hoodie-basic') {
+      if (state.activeView === 'front') return `${baseUrl}mockups/hoodie-front.png`;
+      if (state.activeView === 'back') return `${baseUrl}mockups/hoodie-back.png`;
+      if (state.activeView === 'sleeve-left') return `${baseUrl}mockups/hoodie-left.png`;
+      return `${baseUrl}mockups/hoodie-right.png`;
+    }
+
+    // 1. T-Shirt Boxy Oversized
+    if (state.productType === 'tshirt-boxy') {
+      if (state.activeView === 'front') return `${baseUrl}mockups/tshirt-boxy-front.png`;
+      if (state.activeView === 'back') return `${baseUrl}mockups/tshirt-boxy-back.png`;
+      if (state.activeView === 'sleeve-left') return `${baseUrl}mockups/tshirt-boxy-left.png`;
+      return `${baseUrl}mockups/tshirt-boxy-right.png`;
+    }
+
+    // 2. Long Sleeve Models
+    if (state.sleeveType === 'long') {
+      if (state.activeView === 'front') {
+        return state.neckType === 'v-neck'
+          ? `${baseUrl}mockups/tshirt-vneck-longsleeve-front.png`
+          : `${baseUrl}mockups/tshirt-longsleeve-front.png`;
+      }
+      if (state.activeView === 'back') return `${baseUrl}mockups/tshirt-longsleeve-back.png`;
+      if (state.activeView === 'sleeve-left') return `${baseUrl}mockups/tshirt-longsleeve-left.png`;
+      return `${baseUrl}mockups/tshirt-longsleeve-right.png`;
+    }
+
+    // 3. Short Sleeve Standard (Round & V-Neck)
     if (state.activeView === 'front') {
-      return state.neckType === 'round'
-        ? `${baseUrl}mockups/tshirt-front-round-real.png`
-        : `${baseUrl}mockups/tshirt-front-vneck-real.png`;
+      return state.neckType === 'v-neck'
+        ? `${baseUrl}mockups/tshirt-vneck-front.png`
+        : `${baseUrl}mockups/tshirt-front-round-real.png`;
     }
     if (state.activeView === 'back') {
       return `${baseUrl}mockups/tshirt-back-real.png`;

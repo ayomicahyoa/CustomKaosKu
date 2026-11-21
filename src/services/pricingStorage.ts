@@ -45,7 +45,13 @@ export const loadProductDatabase = (): ProductDatabaseState => {
     return {
       materials: Array.isArray(parsed.materials) && parsed.materials.length > 0 ? parsed.materials : MATERIALS,
       techniques: Array.isArray(parsed.techniques) && parsed.techniques.length > 0 ? parsed.techniques : PRINT_TECHNIQUES,
-      printZones: Array.isArray(parsed.printZones) && parsed.printZones.length > 0 ? parsed.printZones : PRINT_ZONE_PRESETS,
+      printZones:
+        Array.isArray(parsed.printZones) && parsed.printZones.length > 0
+          ? [
+              ...parsed.printZones,
+              ...PRINT_ZONE_PRESETS.filter((p) => !parsed.printZones!.some((x) => x.id === p.id)),
+            ]
+          : PRINT_ZONE_PRESETS,
       colors: Array.isArray(parsed.colors) && parsed.colors.length > 0 ? parsed.colors : SHIRT_COLORS,
       lastUpdated: parsed.lastUpdated || new Date().toISOString(),
     };

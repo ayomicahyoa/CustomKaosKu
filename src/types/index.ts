@@ -76,7 +76,19 @@ export interface PlacedDesign {
 
 export type ShirtSize = 'S' | 'M' | 'L' | 'XL' | 'XXL' | '3XL';
 
+export interface ProductTypeOption {
+  id: string; // 'tshirt-round' | 'tshirt-vneck' | 'tshirt-boxy' | 'hoodie-basic'
+  name: string;
+  shortName: string;
+  badge?: string;
+  description?: string;
+  neckType: NeckType;
+  supportsLongSleeve?: boolean;
+  baseExtraPrice?: number;
+}
+
 export interface CustomTShirtState {
+  productType?: string; // e.g. 'tshirt-round' | 'tshirt-vneck' | 'tshirt-boxy' | 'hoodie-basic'
   neckType: NeckType;
   sleeveType: SleeveType;
   color: ShirtColor;
@@ -113,6 +125,8 @@ export interface CustomerOrder {
   adminNotes?: string;
 
   // Garment Specs
+  productType?: string;
+  productTypeName?: string;
   neckType: NeckType;
   sleeveType: SleeveType;
   colorName: string;
@@ -172,6 +186,8 @@ export interface CustomerOrder {
 export interface CartItem {
   id: string; // e.g. "ITEM-171829..."
   createdAt: string;
+  productType?: string;
+  productTypeName?: string;
   neckType: NeckType;
   sleeveType: SleeveType;
   colorName: string;
