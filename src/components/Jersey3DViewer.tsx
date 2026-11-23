@@ -74,7 +74,7 @@ export const Jersey3DViewer: React.FC<Jersey3DViewerProps> = ({
 
   useEffect(() => {
     const baseUrl = import.meta.env.BASE_URL;
-    const cacheKey = '?v=rgba2';
+    const cacheKey = '?v=cdr_sewing_l_v1';
     const names = [
       { key: 'front', url: `${baseUrl}mockups/mask_front.png${cacheKey}` },
       { key: 'back', url: `${baseUrl}mockups/mask_back.png${cacheKey}` },
@@ -192,17 +192,17 @@ export const Jersey3DViewer: React.FC<Jersey3DViewerProps> = ({
       }
     };
 
-    // 1. Badan Depan (Front Body Box: 0, 0, 1024, 1390 - melebihi garis pola)
-    drawBleedBox(0, 0, 1024, 1390, (pCtx) => {
+    // 1. Badan Depan (Front Body Box: 0, 0, 1024, 1375 - melebihi garis pola)
+    drawBleedBox(0, 0, 1024, 1375, (pCtx) => {
       pCtx.fillStyle = partColors.frontBody;
-      pCtx.fillRect(0, 0, 1024, 1390);
+      pCtx.fillRect(0, 0, 1024, 1375);
       drawPattern(pCtx, jerseyConfig.secondaryColor);
     });
 
-    // 2. Badan Belakang (Back Body Box: 1024, 0, 1024, 1390 - melebihi garis pola)
-    drawBleedBox(1024, 0, 1024, 1390, (pCtx) => {
+    // 2. Badan Belakang (Back Body Box: 1024, 0, 1024, 1375 - melebihi garis pola)
+    drawBleedBox(1024, 0, 1024, 1375, (pCtx) => {
       pCtx.fillStyle = partColors.backBody;
-      pCtx.fillRect(1024, 0, 1024, 1390);
+      pCtx.fillRect(1024, 0, 1024, 1375);
       drawPattern(pCtx, jerseyConfig.secondaryColor);
 
       // Nama Punggung (Hanya jika diaktifkan dan ada isinya)
@@ -248,24 +248,24 @@ export const Jersey3DViewer: React.FC<Jersey3DViewerProps> = ({
       }
     });
 
-    // 3. Lengan Kiri (Left Sleeve Box: 0, 1390, 1024, 520 - melebihi garis pola)
-    drawBleedBox(0, 1390, 1024, 520, (pCtx) => {
+    // 3. Lengan Kiri (Left Sleeve Box: 0, 1375, 795, 545 - melebihi garis pola)
+    drawBleedBox(0, 1375, 795, 545, (pCtx) => {
       pCtx.fillStyle = partColors.leftSleeve;
-      pCtx.fillRect(0, 1390, 1024, 520);
+      pCtx.fillRect(0, 1375, 795, 545);
       drawPattern(pCtx, jerseyConfig.secondaryColor);
     });
 
-    // 4. Lengan Kanan (Right Sleeve Box: 1024, 1390, 1024, 520 - melebihi garis pola)
-    drawBleedBox(1024, 1390, 1024, 520, (pCtx) => {
+    // 4. Lengan Kanan (Right Sleeve Box: 795, 1375, 1253, 545 - melebihi garis pola)
+    drawBleedBox(795, 1375, 1253, 545, (pCtx) => {
       pCtx.fillStyle = partColors.rightSleeve;
-      pCtx.fillRect(1024, 1390, 1024, 520);
+      pCtx.fillRect(795, 1375, 1253, 545);
       drawPattern(pCtx, jerseyConfig.secondaryColor);
     });
 
-    // 5. Kerah / Rib (Collar Band Box: 0, 1910, 2048, 138 - melebihi garis pola)
-    drawBleedBox(0, 1910, 2048, 138, (pCtx) => {
+    // 5. Kerah / Rib (Collar Band Box: 0, 1920, 2048, 128 - melebihi garis pola)
+    drawBleedBox(0, 1920, 2048, 128, (pCtx) => {
       pCtx.fillStyle = partColors.collar || jerseyConfig.accentColor;
-      pCtx.fillRect(0, 1910, 2048, 138);
+      pCtx.fillRect(0, 1920, 2048, 128);
     });
 
     // 6. Elemen Kustom Tambahan (Gambar/Logo & Teks Bebas yang Ditambahkan User)
