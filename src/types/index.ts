@@ -76,8 +76,75 @@ export interface PlacedDesign {
 
 export type ShirtSize = 'S' | 'M' | 'L' | 'XL' | 'XXL' | '3XL';
 
+export type JerseyPattern =
+  | 'solid'
+  | 'stripes'
+  | 'geometric'
+  | 'diagonal'
+  | 'camo'
+  | 'custom';
+
+export interface JerseyRosterItem {
+  id: string;
+  name: string;
+  number: string;
+  size: ShirtSize;
+}
+
+export interface JerseyElementPosition {
+  x: number; // percentage 0 - 100
+  y: number; // percentage 0 - 100
+  scale: number; // 0.2 - 3.0
+}
+
+export interface JerseyPartColors {
+  frontBody: string;
+  backBody: string;
+  leftSleeve: string;
+  rightSleeve: string;
+  collar: string;
+}
+
+export interface JerseyGraphicElement {
+  id: string;
+  type: 'image' | 'text';
+  name: string;
+  imageUrl?: string;
+  text?: string;
+  x: number; // percentage 0 - 100
+  y: number; // percentage 0 - 100
+  scale: number;
+  rotation?: number;
+  color?: string;
+  strokeColor?: string;
+  fontFamily?: string;
+}
+
+export interface JerseyCustomization {
+  pattern: JerseyPattern;
+  primaryColor: string;
+  secondaryColor: string;
+  accentColor: string;
+  collarColor: string;
+  partColors?: JerseyPartColors;
+  activePart?: 'all' | 'front' | 'back' | 'sleeve-left' | 'sleeve-right' | 'collar';
+  // Player Name & Number (Optional, can be toggled on/off)
+  showPlayerName: boolean;
+  playerName: string;
+  playerNamePos: JerseyElementPosition;
+  showPlayerNumber: boolean;
+  playerNumber: string;
+  playerNumberPos: JerseyElementPosition;
+  fontFamily: string;
+  numberColor: string;
+  numberStrokeColor: string;
+  // Freeform custom elements (logos, sponsors, text) that can be added, dragged, and deleted
+  customElements: JerseyGraphicElement[];
+  roster?: JerseyRosterItem[];
+}
+
 export interface ProductTypeOption {
-  id: string; // 'tshirt-round' | 'tshirt-vneck' | 'tshirt-boxy' | 'hoodie-basic'
+  id: string; // 'tshirt-round' | 'tshirt-vneck' | 'tshirt-boxy' | 'hoodie-basic' | 'jersey-fullprint'
   name: string;
   shortName: string;
   badge?: string;
@@ -88,7 +155,7 @@ export interface ProductTypeOption {
 }
 
 export interface CustomTShirtState {
-  productType?: string; // e.g. 'tshirt-round' | 'tshirt-vneck' | 'tshirt-boxy' | 'hoodie-basic'
+  productType?: string; // e.g. 'tshirt-round' | 'tshirt-vneck' | 'tshirt-boxy' | 'hoodie-basic' | 'jersey-fullprint'
   neckType: NeckType;
   sleeveType: SleeveType;
   color: ShirtColor;
@@ -99,6 +166,7 @@ export interface CustomTShirtState {
   size: ShirtSize;
   sizeBreakdown: Record<ShirtSize, number>;
   quantity: number;
+  jerseyConfig?: JerseyCustomization;
 }
 
 export type OrderStatus =
@@ -127,6 +195,7 @@ export interface CustomerOrder {
   // Garment Specs
   productType?: string;
   productTypeName?: string;
+  jerseyConfig?: JerseyCustomization;
   neckType: NeckType;
   sleeveType: SleeveType;
   colorName: string;
@@ -188,6 +257,7 @@ export interface CartItem {
   createdAt: string;
   productType?: string;
   productTypeName?: string;
+  jerseyConfig?: JerseyCustomization;
   neckType: NeckType;
   sleeveType: SleeveType;
   colorName: string;

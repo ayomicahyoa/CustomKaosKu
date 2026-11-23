@@ -134,7 +134,7 @@ export const ProductTypeDropdown: React.FC<ProductTypeDropdownProps> = ({
           <div className="pt-1.5 mt-1 border-t border-slate-100 px-2 flex items-center justify-between text-[10px] text-slate-400">
             <span className="flex items-center gap-1">
               <Sparkles className="w-3 h-3 text-amber-500" />
-              <span>Model Polo & Raglan akan segera ditambahkan</span>
+              <span>Model Polo, Jaket & Raglan akan segera ditambahkan</span>
             </span>
           </div>
         </div>

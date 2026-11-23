@@ -506,6 +506,11 @@ ${paymentType === 'dp_50' ? `• Sisa Pelunasan (Dibayar Saat Siap Kirim): Rp ${
                         <div className="text-[11px] font-semibold text-slate-700">
                           {item.size}
                         </div>
+                        {item.jerseyConfig && (
+                          <div className="text-[10px] font-bold text-sky-700 bg-sky-50 px-1.5 py-0.5 rounded inline-block">
+                            Jersey 3D: #{item.jerseyConfig.playerNumber} {item.jerseyConfig.playerName} ({item.jerseyConfig.pattern})
+                          </div>
+                        )}
                         {item.printBreakdown && item.printBreakdown.length > 0 && (
                           <div className="text-[10px] text-slate-500 truncate max-w-xs">
                             Area: {item.printBreakdown.map((p) => `${p.placement}`).join(', ')}

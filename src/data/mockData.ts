@@ -44,6 +44,16 @@ export const PRODUCT_TYPES: ProductTypeOption[] = [
     supportsLongSleeve: false,
     baseExtraPrice: 0,
   },
+  {
+    id: 'jersey-fullprint',
+    name: 'Custom Jersey Sublimasi (3D)',
+    shortName: 'Jersey 3D',
+    badge: '3D Full Print',
+    description: 'Jersey olahraga full print sublimasi 360°, bebas atur motif, nama, nomor & sponsor.',
+    neckType: 'round',
+    supportsLongSleeve: false,
+    baseExtraPrice: 15000,
+  },
 ];
 
 export const SHIRT_COLORS: ShirtColor[] = [

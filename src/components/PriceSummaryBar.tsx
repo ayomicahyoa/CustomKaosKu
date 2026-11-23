@@ -285,6 +285,7 @@ RINCIAN BIAYA & PEMBAYARAN:
         mockupPreview,
         mockupPreviews,
         designs: state.designs,
+        jerseyConfig: state.jerseyConfig,
       };
 
       addToCart(item);

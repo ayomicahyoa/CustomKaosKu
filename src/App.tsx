@@ -23,6 +23,9 @@ import { ProductTypeDropdown } from './components/ProductTypeDropdown';
 import { PRODUCT_TYPES } from './data/mockData';
 import { DesignUploadPanel } from './components/DesignUploadPanel';
 import { ConfiguratorSidebar } from './components/ConfiguratorSidebar';
+import { Jersey3DViewer } from './components/Jersey3DViewer';
+import { JerseyConfigSidebar } from './components/JerseyConfigSidebar';
+import type { JerseyCustomization } from './types';
 import { PriceSummaryBar } from './components/PriceSummaryBar';
 import { AdminDashboard } from './components/AdminDashboard';
 import { OrderTrackingPage } from './components/OrderTrackingPage';
@@ -64,6 +67,37 @@ const getInitialRoute = (): AppRoute => {
   return 'studio';
 };
 
+const DEFAULT_JERSEY_CONFIG: JerseyCustomization = {
+  pattern: 'stripes',
+  primaryColor: '#1e3a8a',
+  secondaryColor: '#ffffff',
+  accentColor: '#f59e0b',
+  collarColor: '#f59e0b',
+  partColors: {
+    frontBody: '#1e3a8a',
+    backBody: '#1e3a8a',
+    leftSleeve: '#1e3a8a',
+    rightSleeve: '#1e3a8a',
+    collar: '#f59e0b',
+  },
+  activePart: 'all',
+  showPlayerName: false,
+  playerName: 'PERALTA',
+  playerNamePos: { x: 75.0, y: 16.5, scale: 1 },
+  showPlayerNumber: false,
+  playerNumber: '10',
+  playerNumberPos: { x: 75.0, y: 29.5, scale: 1 },
+  fontFamily: 'Impact',
+  numberColor: '#ffffff',
+  numberStrokeColor: '#000000',
+  customElements: [],
+  roster: [
+    { id: 'p-1', name: 'PERALTA', number: '10', size: 'L' },
+    { id: 'p-2', name: 'STRIKER', number: '9', size: 'M' },
+    { id: 'p-3', name: 'PLAYMAKER', number: '7', size: 'L' },
+  ],
+};
+
 export function App() {
   // Load dynamic product pricing & catalog database from localStorage (or defaults)
   const [db, setDb] = useState<ProductDatabaseState>(() => loadProductDatabase());
@@ -97,6 +131,7 @@ export function App() {
     size: 'L',
     sizeBreakdown: { S: 2, M: 4, L: 4, XL: 2, XXL: 0, '3XL': 0 },
     quantity: 12,
+    jerseyConfig: DEFAULT_JERSEY_CONFIG,
   });
 
   const [activeTab, setActiveTab] = useState<'design' | 'config'>('config');
@@ -232,6 +267,7 @@ export function App() {
       productType: pt.id,
       neckType: pt.neckType,
       sleeveType: pt.id === 'hoodie-basic' ? 'long' : (pt.supportsLongSleeve === false ? 'short' : prev.sleeveType),
+      jerseyConfig: prev.jerseyConfig || DEFAULT_JERSEY_CONFIG,
     }));
   };
 
@@ -710,79 +746,118 @@ export function App() {
               onSelectProductType={handleSelectProductType}
             />
 
-            {/* View angle selector */}
-            <ViewAngleSwitcher
-              activeView={state.activeView}
-              onSelectView={(v: ViewAngle) => setState((prev) => ({ ...prev, activeView: v }))}
-              designs={state.designs}
-              sleeveType={state.sleeveType}
-            />
+            {state.productType === 'jersey-fullprint' ? (
+              <div className="w-full flex-1 flex flex-col">
+                <Jersey3DViewer
+                  jerseyConfig={state.jerseyConfig || DEFAULT_JERSEY_CONFIG}
+                  onChangeJerseyConfig={(cfg) =>
+                    setState((prev) => ({ ...prev, jerseyConfig: cfg }))
+                  }
+                />
+              </div>
+            ) : (
+              <>
+                {/* View angle selector */}
+                <ViewAngleSwitcher
+                  activeView={state.activeView}
+                  onSelectView={(v: ViewAngle) => setState((prev) => ({ ...prev, activeView: v }))}
+                  designs={state.designs}
+                  sleeveType={state.sleeveType}
+                />
 
-            {/* The Canvas with dynamic printZones */}
-            <TShirtCanvas
-              state={state}
-              printZones={db.printZones}
-              onUpdateDesign={handleUpdateDesign}
-              showGuides={showGuides}
-              setShowGuides={setShowGuides}
-            />
+                {/* The Canvas with dynamic printZones */}
+                <TShirtCanvas
+                  state={state}
+                  printZones={db.printZones}
+                  onUpdateDesign={handleUpdateDesign}
+                  showGuides={showGuides}
+                  setShowGuides={setShowGuides}
+                />
+              </>
+            )}
           </div>
 
           {/* RIGHT: Controls & Customization Sidebar (5 cols on lg) */}
           <div className="lg:col-span-5 flex flex-col gap-3 lg:gap-0">
             {/* ===== DESKTOP SIDEBAR (hidden on mobile) ===== */}
             <div className="hidden lg:flex flex-col bg-white rounded-3xl p-5 shadow-sm border border-slate-200">
-              {/* Sidebar Navigation Tabs */}
-              <div className="flex items-center p-1 bg-slate-100 rounded-2xl mb-5">
-                <button
-                  onClick={() => setActiveTab('config')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all ${activeTab === 'config'
-                      ? 'bg-white text-slate-900 shadow-xs'
-                      : 'text-slate-500 hover:text-slate-800'
-                    }`}
-                >
-                  <Settings className="w-4 h-4 text-indigo-600" />
-                  <span>Spesifikasi Kaos</span>
-                </button>
-
-                <button
-                  onClick={() => setActiveTab('design')}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all ${activeTab === 'design'
-                      ? 'bg-white text-slate-900 shadow-xs'
-                      : 'text-slate-500 hover:text-slate-800'
-                    }`}
-                >
-                  <Image className="w-4 h-4 text-sky-600" />
-                  <span>Upload & Sablon</span>
-                </button>
-              </div>
-
-              {/* Tab Contents */}
-              <div className="max-h-[calc(100vh-280px)] overflow-y-auto pr-1">
-                {activeTab === 'config' ? (
-                  <ConfiguratorSidebar
-                    state={state}
-                    materials={db.materials}
-                    techniques={db.techniques}
-                    colors={db.colors}
-                    productTypes={PRODUCT_TYPES}
-                    onChangeProductType={handleSelectProductType}
-                    onChangeNeck={(neck: NeckType) => setState((prev) => ({ ...prev, neckType: neck }))}
-                    onChangeSleeve={(sleeve: SleeveType) => setState((prev) => ({ ...prev, sleeveType: sleeve }))}
-                    onChangeColor={(color: ShirtColor) => setState((prev) => ({ ...prev, color }))}
-                    onChangeMaterial={(mat: MaterialOption) => setState((prev) => ({ ...prev, material: mat }))}
-                    onChangeTechnique={(tech: PrintTechnique) => setState((prev) => ({ ...prev, technique: tech }))}
-                    onChangeSize={(size: ShirtSize) => setState((prev) => ({ ...prev, size }))}
+              {state.productType === 'jersey-fullprint' ? (
+                <div className="max-h-[calc(100vh-280px)] overflow-y-auto pr-1">
+                  <div className="flex items-center gap-2 mb-4 pb-3 border-b border-slate-100">
+                    <div className="w-8 h-8 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center font-bold text-xs">
+                      3D
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900">Custom Jersey Full Print</h3>
+                      <p className="text-[11px] text-slate-500">Motif sublimasi, nama punggung & nomor tim</p>
+                    </div>
+                  </div>
+                  <JerseyConfigSidebar
+                    jerseyConfig={state.jerseyConfig || DEFAULT_JERSEY_CONFIG}
+                    onChangeJerseyConfig={(cfg) =>
+                      setState((prev) => ({ ...prev, jerseyConfig: cfg }))
+                    }
+                    quantity={state.quantity}
+                    onChangeQuantity={handleUpdateQuantityFromBar}
+                    sizeBreakdown={state.sizeBreakdown}
                     onChangeSizeBreakdown={handleUpdateSizeBreakdown}
                   />
-                ) : (
-                  <DesignUploadPanel
-                    state={state}
-                    printZones={db.printZones}
-                    onUpdateDesign={handleUpdateDesign}
-                  />
-                )}
-              </div>
+                </div>
+              ) : (
+                <>
+                  {/* Sidebar Navigation Tabs */}
+                  <div className="flex items-center p-1 bg-slate-100 rounded-2xl mb-5">
+                    <button
+                      onClick={() => setActiveTab('config')}
+                      className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all ${activeTab === 'config'
+                          ? 'bg-white text-slate-900 shadow-xs'
+                          : 'text-slate-500 hover:text-slate-800'
+                        }`}
+                    >
+                      <Settings className="w-4 h-4 text-indigo-600" />
+                      <span>Spesifikasi Kaos</span>
+                    </button>
+
+                    <button
+                      onClick={() => setActiveTab('design')}
+                      className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all ${activeTab === 'design'
+                          ? 'bg-white text-slate-900 shadow-xs'
+                          : 'text-slate-500 hover:text-slate-800'
+                        }`}
+                    >
+                      <Image className="w-4 h-4 text-sky-600" />
+                      <span>Upload & Sablon</span>
+                    </button>
+                  </div>
+
+                  {/* Tab Contents */}
+                  <div className="max-h-[calc(100vh-280px)] overflow-y-auto pr-1">
+                    {activeTab === 'config' ? (
+                      <ConfiguratorSidebar
+                        state={state}
+                        materials={db.materials}
+                        techniques={db.techniques}
+                        colors={db.colors}
+                        productTypes={PRODUCT_TYPES}
+                        onChangeProductType={handleSelectProductType}
+                        onChangeNeck={(neck: NeckType) => setState((prev) => ({ ...prev, neckType: neck }))}
+                        onChangeSleeve={(sleeve: SleeveType) => setState((prev) => ({ ...prev, sleeveType: sleeve }))}
+                        onChangeColor={(color: ShirtColor) => setState((prev) => ({ ...prev, color }))}
+                        onChangeMaterial={(mat: MaterialOption) => setState((prev) => ({ ...prev, material: mat }))}
+                        onChangeTechnique={(tech: PrintTechnique) => setState((prev) => ({ ...prev, technique: tech }))}
+                        onChangeSize={(size: ShirtSize) => setState((prev) => ({ ...prev, size }))}
+                        onChangeSizeBreakdown={handleUpdateSizeBreakdown}
+                      />
+                    ) : (
+                      <DesignUploadPanel
+                        state={state}
+                        printZones={db.printZones}
+                        onUpdateDesign={handleUpdateDesign}
+                      />
+                    )}
+                  </div>
+                </>
+              )}
             </div>
 
             {/* ===== MOBILE ACCORDION SECTIONS (hidden on desktop) ===== */}
@@ -814,21 +889,34 @@ export function App() {
               {mobileOpenSection === 'config' && (
                 <div className="px-4 pb-4 border-t border-slate-100">
                   <div className="pt-3">
-                    <ConfiguratorSidebar
-                      state={state}
-                      materials={db.materials}
-                      techniques={db.techniques}
-                      colors={db.colors}
-                      productTypes={PRODUCT_TYPES}
-                      onChangeProductType={handleSelectProductType}
-                      onChangeNeck={(neck: NeckType) => setState((prev) => ({ ...prev, neckType: neck }))}
-                      onChangeSleeve={(sleeve: SleeveType) => setState((prev) => ({ ...prev, sleeveType: sleeve }))}
-                      onChangeColor={(color: ShirtColor) => setState((prev) => ({ ...prev, color }))}
-                      onChangeMaterial={(mat: MaterialOption) => setState((prev) => ({ ...prev, material: mat }))}
-                      onChangeTechnique={(tech: PrintTechnique) => setState((prev) => ({ ...prev, technique: tech }))}
-                      onChangeSize={(size: ShirtSize) => setState((prev) => ({ ...prev, size }))}
-                      onChangeSizeBreakdown={handleUpdateSizeBreakdown}
-                    />
+                    {state.productType === 'jersey-fullprint' ? (
+                      <JerseyConfigSidebar
+                        jerseyConfig={state.jerseyConfig || DEFAULT_JERSEY_CONFIG}
+                        onChangeJerseyConfig={(cfg) =>
+                          setState((prev) => ({ ...prev, jerseyConfig: cfg }))
+                        }
+                        quantity={state.quantity}
+                        onChangeQuantity={handleUpdateQuantityFromBar}
+                        sizeBreakdown={state.sizeBreakdown}
+                        onChangeSizeBreakdown={handleUpdateSizeBreakdown}
+                      />
+                    ) : (
+                      <ConfiguratorSidebar
+                        state={state}
+                        materials={db.materials}
+                        techniques={db.techniques}
+                        colors={db.colors}
+                        productTypes={PRODUCT_TYPES}
+                        onChangeProductType={handleSelectProductType}
+                        onChangeNeck={(neck: NeckType) => setState((prev) => ({ ...prev, neckType: neck }))}
+                        onChangeSleeve={(sleeve: SleeveType) => setState((prev) => ({ ...prev, sleeveType: sleeve }))}
+                        onChangeColor={(color: ShirtColor) => setState((prev) => ({ ...prev, color }))}
+                        onChangeMaterial={(mat: MaterialOption) => setState((prev) => ({ ...prev, material: mat }))}
+                        onChangeTechnique={(tech: PrintTechnique) => setState((prev) => ({ ...prev, technique: tech }))}
+                        onChangeSize={(size: ShirtSize) => setState((prev) => ({ ...prev, size }))}
+                        onChangeSizeBreakdown={handleUpdateSizeBreakdown}
+                      />
+                    )}
                   </div>
                 </div>
               )}

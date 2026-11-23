@@ -1,0 +1,944 @@
+/* Auto-generated Jersey Fonts CSS */
+
+@font-face {
+  font-family: 'JerseyFont_0';
+  src: url('/fonts/jersey/font_000_AC_Milan_2014-2016.otf') format('opentype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_1';
+  src: url('/fonts/jersey/font_001_AC_MILAN_2014-2016.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_2';
+  src: url('/fonts/jersey/font_002_AC_MILAN_2015.2016.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_3';
+  src: url('/fonts/jersey/font_003_AC_Milan_KLG_2017-18_VH.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_4';
+  src: url('/fonts/jersey/font_004_Academic_M54.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_5';
+  src: url('/fonts/jersey/font_005_ACMilan18-19.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_6';
+  src: url('/fonts/jersey/font_006_adam_gorry_inline.otf') format('opentype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_7';
+  src: url('/fonts/jersey/font_007_Adidas_2006_NeroDesign.otf') format('opentype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_8';
+  src: url('/fonts/jersey/font_008_Adidas_2014_font.otf') format('opentype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_9';
+  src: url('/fonts/jersey/font_009_Adidas_2018.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_10';
+  src: url('/fonts/jersey/font_010_Adidas_90_s_NeroDesign.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_11';
+  src: url('/fonts/jersey/font_011_Adidas_Euro_2008_NeroDesign.otf') format('opentype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_12';
+  src: url('/fonts/jersey/font_012_Adidas_Flamengo_2016.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_13';
+  src: url('/fonts/jersey/font_013_Adidas_World_Cup_2022_Font.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_14';
+  src: url('/fonts/jersey/font_014_Ajax_25-26_NeroDesign.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_15';
+  src: url('/fonts/jersey/font_015_AmericaClub20232024Netral-Regular.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_16';
+  src: url('/fonts/jersey/font_016_Arsenal_15_16_com_escudo.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_17';
+  src: url('/fonts/jersey/font_017_Arsenal_2014.2015.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_18';
+  src: url('/fonts/jersey/font_018_Arsenal_2016.2017.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_19';
+  src: url('/fonts/jersey/font_019_Arsenal_UCL_2017.2018.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_20';
+  src: url('/fonts/jersey/font_020_Atletico_Madrid_2015-2016.otf') format('opentype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_21';
+  src: url('/fonts/jersey/font_021_Atletico_Madrid_2016_2017.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_22';
+  src: url('/fonts/jersey/font_022_Atletico_Madrid_UCL_2017-2018_wigo12fc.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_23';
+  src: url('/fonts/jersey/font_023_Atletico_MG_2017_Libertadores.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_24';
+  src: url('/fonts/jersey/font_024_Atletico_Mineiro_Libertadores_2017.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_25';
+  src: url('/fonts/jersey/font_025_Atletico_Paranaense_2016.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_26';
+  src: url('/fonts/jersey/font_026_Atletico_Paranaense_2017.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_27';
+  src: url('/fonts/jersey/font_027_Atl_tico_de_Madrid_2017.2018_LA_Liga.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_28';
+  src: url('/fonts/jersey/font_028_Azmie_WC2010_Brazil.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_29';
+  src: url('/fonts/jersey/font_029_Bahia_2016.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_30';
+  src: url('/fonts/jersey/font_030_Barcelona_2017.2018_LA_Liga.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_31';
+  src: url('/fonts/jersey/font_031_Bar_a_2015.otf') format('opentype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_32';
+  src: url('/fonts/jersey/font_032_Bayern_Munchen_25-26_karteltech.net.otf') format('opentype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_33';
+  src: url('/fonts/jersey/font_033_Bayern_Munchen_UEFA_2023-2024.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_34';
+  src: url('/fonts/jersey/font_034_Bayern_Munich_2015.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_35';
+  src: url('/fonts/jersey/font_035_Bayern_Munich_Adidas_2018-19.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_36';
+  src: url('/fonts/jersey/font_036_Benfica_25-26_NeroDesign.otf') format('opentype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_37';
+  src: url('/fonts/jersey/font_037_BORNEO_FC_23-24_TIPOGRAFSTORE.TTF') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_38';
+  src: url('/fonts/jersey/font_038_Borussia_Dortmund_1516.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_39';
+  src: url('/fonts/jersey/font_039_BORUSSIA_DORTMUND_2014-15.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_40';
+  src: url('/fonts/jersey/font_040_Borussia_Dortmund_2015.2016_Puma.otf') format('opentype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_41';
+  src: url('/fonts/jersey/font_041_Borussia_Dortmund_2016.2017.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_42';
+  src: url('/fonts/jersey/font_042_Botafogo_-_Topper_2016.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_43';
+  src: url('/fonts/jersey/font_043_Botafogo_2015.2016_Puma.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_44';
+  src: url('/fonts/jersey/font_044_Botafogo_2017-2018.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_45';
+  src: url('/fonts/jersey/font_045_Brasil_2002_Nike.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_46';
+  src: url('/fonts/jersey/font_046_Brasil_2016_Nike.otf') format('opentype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_47';
+  src: url('/fonts/jersey/font_047_Brasil_Nike_2018.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_48';
+  src: url('/fonts/jersey/font_048_Brasil-Nike-2018__1_.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_49';
+  src: url('/fonts/jersey/font_049_Cambodia_-_Varaman_Font.otf') format('opentype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_50';
+  src: url('/fonts/jersey/font_050_D016000D.TTF') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_51';
+  src: url('/fonts/jersey/font_051_Dortmund_Special__2024_NeroDesign.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_52';
+  src: url('/fonts/jersey/font_052_England_font_2020-2021.otf') format('opentype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_53';
+  src: url('/fonts/jersey/font_053_England_WC2018.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_54';
+  src: url('/fonts/jersey/font_054_England_World_Cup_Font_2022.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_55';
+  src: url('/fonts/jersey/font_055_FC_Barcelona_Font.TTF') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_56';
+  src: url('/fonts/jersey/font_056_FFF_Corinthians_2021_Numbers.otf') format('opentype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_57';
+  src: url('/fonts/jersey/font_057_FFF_Corinthians_2021_Numbers.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_58';
+  src: url('/fonts/jersey/font_058_FFF_Corinthians_2021.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_59';
+  src: url('/fonts/jersey/font_059_Flamengo_2015.otf') format('opentype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_60';
+  src: url('/fonts/jersey/font_060_FLOW_ACLOSP.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_61';
+  src: url('/fonts/jersey/font_061_FLOW_COVID-19.TTF') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_62';
+  src: url('/fonts/jersey/font_062_FLOW_GRATIS_AN.TTF') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_63';
+  src: url('/fonts/jersey/font_063_FLOW_INA_0.TTF') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_64';
+  src: url('/fonts/jersey/font_064_FLOW_LIVERMOD.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_65';
+  src: url('/fonts/jersey/font_065_FLOW_MALAY.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_66';
+  src: url('/fonts/jersey/font_066_FLOW_NGAJOAK.TTF') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_67';
+  src: url('/fonts/jersey/font_067_FLOW_NINJUTSU_DN.TTF') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_68';
+  src: url('/fonts/jersey/font_068_FLOW_PPKM27.TTF') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_69';
+  src: url('/fonts/jersey/font_069_FLOW_SIBAN.TTF') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_70';
+  src: url('/fonts/jersey/font_070_FLOW_WESWEY.TTF') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_71';
+  src: url('/fonts/jersey/font_071_FLOWART_II_MCMXCVI.TTF') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_72';
+  src: url('/fonts/jersey/font_072_FLOWART_MCMXCVI.TTF') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_73';
+  src: url('/fonts/jersey/font_073_Fluminense_2017_Under_Armour.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_74';
+  src: url('/fonts/jersey/font_074_france_2018__1_.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_75';
+  src: url('/fonts/jersey/font_075_Geneva01-yw6gq.otf') format('opentype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_76';
+  src: url('/fonts/jersey/font_076_Gremio_2015.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_77';
+  src: url('/fonts/jersey/font_077_GR_MIO_2017_-.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_78';
+  src: url('/fonts/jersey/font_078_Hala_Madrid_2015_-_2016.otf') format('opentype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_79';
+  src: url('/fonts/jersey/font_079_HOLANDA_2014.otf') format('opentype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_80';
+  src: url('/fonts/jersey/font_080_Holland_2014.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_81';
+  src: url('/fonts/jersey/font_081_Inter_Milan_Font_2019-2020.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_82';
+  src: url('/fonts/jersey/font_082_Internacional_Nike_2017.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_83';
+  src: url('/fonts/jersey/font_083_Internacional_Nike_2018.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_84';
+  src: url('/fonts/jersey/font_084_It_lia_2016.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_85';
+  src: url('/fonts/jersey/font_085_Juventus__ITALY__15-16_-_Licensed_By_X11.otf') format('opentype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_86';
+  src: url('/fonts/jersey/font_086_Juventus__ITALY__2015-2017.otf') format('opentype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_87';
+  src: url('/fonts/jersey/font_087_Juventus_2014.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_88';
+  src: url('/fonts/jersey/font_088_Juventus_Adidas_2017-18.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_89';
+  src: url('/fonts/jersey/font_089_LA_LIGA_2018-19.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_90';
+  src: url('/fonts/jersey/font_090_LFP_2012.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_91';
+  src: url('/fonts/jersey/font_091_Man_City_UCL_V1_17-18_VH.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_92';
+  src: url('/fonts/jersey/font_092_Manchester_City_25-26_karteltech.net.otf') format('opentype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_93';
+  src: url('/fonts/jersey/font_093_Manchester_United_-_Red-Devils-2016.2017.otf') format('opentype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_94';
+  src: url('/fonts/jersey/font_094_MANCHESTER_UNITED_2025_-_2026_karteltech.net.otf') format('opentype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_95';
+  src: url('/fonts/jersey/font_095_Manchester_United_Adidas_2017-18.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_96';
+  src: url('/fonts/jersey/font_096_MunichRoad.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_97';
+  src: url('/fonts/jersey/font_097_NBA_Bulls.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_98';
+  src: url('/fonts/jersey/font_098_NBA_Cavaliers.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_99';
+  src: url('/fonts/jersey/font_099_NBA_Celtics.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_100';
+  src: url('/fonts/jersey/font_100_NBA_Clippers.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_101';
+  src: url('/fonts/jersey/font_101_NBA_Heat.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_102';
+  src: url('/fonts/jersey/font_102_NBA_Hornets.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_103';
+  src: url('/fonts/jersey/font_103_NBA_Jazz.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_104';
+  src: url('/fonts/jersey/font_104_NBA_Kings_Alternate.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_105';
+  src: url('/fonts/jersey/font_105_NBA_Knicks.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_106';
+  src: url('/fonts/jersey/font_106_NBA_Mavericks.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_107';
+  src: url('/fonts/jersey/font_107_NBA_Nets.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_108';
+  src: url('/fonts/jersey/font_108_NBA_Nuggets.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_109';
+  src: url('/fonts/jersey/font_109_NBA_Pacers.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_110';
+  src: url('/fonts/jersey/font_110_NBA_Pistons.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_111';
+  src: url('/fonts/jersey/font_111_NBA_Timberwolves.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_112';
+  src: url('/fonts/jersey/font_112_NBA_Wizards.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_113';
+  src: url('/fonts/jersey/font_113_NFL_Chargers_2007.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_114';
+  src: url('/fonts/jersey/font_114_Nigeria-Nike-2018.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_115';
+  src: url('/fonts/jersey/font_115_Nike_Soccer_2016-2017.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_116';
+  src: url('/fonts/jersey/font_116_Nike-2018-sele__es.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_117';
+  src: url('/fonts/jersey/font_117_nikeinter11.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_118';
+  src: url('/fonts/jersey/font_118_Palmeiras_2016_Adidas.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_119';
+  src: url('/fonts/jersey/font_119_Palmeiras_2016.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_120';
+  src: url('/fonts/jersey/font_120_Palmeiras_2017_3.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_121';
+  src: url('/fonts/jersey/font_121_Panama_New_Balance_2018.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_122';
+  src: url('/fonts/jersey/font_122_Penalty_2013_N_UTICO.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_123';
+  src: url('/fonts/jersey/font_123_Persib_liga1_2023_2024_netral-Regular.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_124';
+  src: url('/fonts/jersey/font_124_Persija_Font.otf') format('opentype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_125';
+  src: url('/fonts/jersey/font_125_peru-2018-marathon.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_126';
+  src: url('/fonts/jersey/font_126_Ponte_Preta_2017__Flamengo_2016-2017_2.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_127';
+  src: url('/fonts/jersey/font_127_Portugal_World_Cup_14_-_Licensed_By_X11.otf') format('opentype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_128';
+  src: url('/fonts/jersey/font_128_Portugal-Nike-2018.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_129';
+  src: url('/fonts/jersey/font_129_PSG_2017-2018_UCL.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_130';
+  src: url('/fonts/jersey/font_130_PSG_2017.2018_Nike_-_Ligue_France.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_131';
+  src: url('/fonts/jersey/font_131_PSG_Paris_saint_germain_UEFA_UCL_2015_2016.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_132';
+  src: url('/fonts/jersey/font_132_PSG_LIGUE1_25-26_karteltech.net.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_133';
+  src: url('/fonts/jersey/font_133_Psis_FC_23-24_Tipografstore.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_134';
+  src: url('/fonts/jersey/font_134_REAL_2015.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_135';
+  src: url('/fonts/jersey/font_135_Real_Madrid_2014-15.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_136';
+  src: url('/fonts/jersey/font_136_Real_Madrid_2016_2017.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_137';
+  src: url('/fonts/jersey/font_137_Real_Madrid_Adidas_2018-19.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_138';
+  src: url('/fonts/jersey/font_138_real-madrid-2021-ucl-cup-font.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_139';
+  src: url('/fonts/jersey/font_139_Republica_Tcheca_2016.2017_Puma.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_140';
+  src: url('/fonts/jersey/font_140_Roma_2015-16__SEC__-_Licensed_By_X11.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_141';
+  src: url('/fonts/jersey/font_141_Santos_2017.2018_-_UConn_Extended.otf') format('opentype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_142';
+  src: url('/fonts/jersey/font_142_SINIMAKI_APPAREL_GERMANY_EURO_2024_FONT.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_143';
+  src: url('/fonts/jersey/font_143_Spurs_Regular.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_144';
+  src: url('/fonts/jersey/font_144_stenciln.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_145';
+  src: url('/fonts/jersey/font_145_StormBreaker-nRqR0.otf') format('opentype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_146';
+  src: url('/fonts/jersey/font_146_S_o_Paulo___UNDER_ARMOR___15-16_-_Licensed_By_X11.otf') format('opentype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_147';
+  src: url('/fonts/jersey/font_147_S_o_Paulo___UNDER_ARMOR___15-16.otf') format('opentype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_148';
+  src: url('/fonts/jersey/font_148_Trequartista-YzZa2.otf') format('opentype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_149';
+  src: url('/fonts/jersey/font_149_Umbro_Brasil_2017.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_150';
+  src: url('/fonts/jersey/font_150_Umbro_Brazil_2021_-_Marccos_Designer.otf') format('opentype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_151';
+  src: url('/fonts/jersey/font_151_USA-Nike-2018.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_152';
+  src: url('/fonts/jersey/font_152_Vasco_2014.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_153';
+  src: url('/fonts/jersey/font_153_Vasco_2016.2017.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_154';
+  src: url('/fonts/jersey/font_154_Vasco_2016.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_155';
+  src: url('/fonts/jersey/font_155_Vasco_da_Gama_Diadora_2018.ttf') format('truetype');
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'JerseyFont_156';
+  src: url('/fonts/jersey/font_156_Vitoria_2016.ttf') format('truetype');
+  font-display: swap;
+}
+
