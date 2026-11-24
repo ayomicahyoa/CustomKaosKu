@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -11,8 +11,12 @@ import {
   Download,
   Sparkles,
   RefreshCw,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { ensureJerseyFontLoaded } from '../data/jerseyFonts';
+import { JERSEY_TEMPLATES, type JerseyTemplateItem } from '../data/jerseyTemplates';
+import { getRecoloredCanvas } from '../utils/jerseyRecolor';
 
 interface Jersey3DViewerProps {
   jerseyConfig: JerseyCustomization;
@@ -53,6 +57,7 @@ export const Jersey3DViewer: React.FC<Jersey3DViewerProps> = ({
 
   // Cache loaded custom image elements
   const customImgCacheRef = useRef<Map<string, HTMLImageElement>>(new Map());
+  const templateImgCacheRef = useRef<Map<string, HTMLImageElement>>(new Map());
 
   // Pre-load mask images & clean outline
   const masksRef = useRef<{
@@ -192,19 +197,126 @@ export const Jersey3DViewer: React.FC<Jersey3DViewerProps> = ({
       }
     };
 
-    // 1. Badan Depan (Front Body Box: 0, 0, 1024, 1375 - melebihi garis pola)
-    drawBleedBox(0, 0, 1024, 1375, (pCtx) => {
-      pCtx.fillStyle = partColors.frontBody;
-      pCtx.fillRect(0, 0, 1024, 1375);
-      drawPattern(pCtx, jerseyConfig.secondaryColor);
-    });
+    // Check if active template is selected
+    const templateKey = jerseyConfig.templateTextureUrl
+      ? jerseyConfig.templateTextureUrl.startsWith('data:')
+        ? jerseyConfig.templateTextureUrl
+        : `${jerseyConfig.templateTextureUrl}?v=hem_fix_v8`
+      : null;
 
-    // 2. Badan Belakang (Back Body Box: 1024, 0, 1024, 1375 - melebihi garis pola)
-    drawBleedBox(1024, 0, 1024, 1375, (pCtx) => {
-      pCtx.fillStyle = partColors.backBody;
-      pCtx.fillRect(1024, 0, 1024, 1375);
-      drawPattern(pCtx, jerseyConfig.secondaryColor);
+    const templateImg = templateKey ? templateImgCacheRef.current.get(templateKey) : null;
 
+    if (templateKey && !templateImg) {
+      const img = new Image();
+      img.src = templateKey;
+      img.onload = () => {
+        templateImgCacheRef.current.set(templateKey, img);
+        setImageVersion((v) => v + 1);
+      };
+    }
+
+    if (templateImg && templateImg.complete) {
+      // Dynamic Palette Recolor Engine: if user changed any detected color, apply fast 32-LUT recolor
+      const recoloredCanvas = getRecoloredCanvas(
+        templateImg,
+        jerseyConfig.colorPalette,
+        templateKey || undefined
+      );
+      const activeDrawable: CanvasImageSource = recoloredCanvas || templateImg;
+
+      const isFullSheet =
+        templateImg.naturalWidth === 2048 && templateImg.naturalHeight === 2048;
+
+      if (isFullSheet) {
+        // 1. Draw pre-mapped full sublimation template across the entire 2048x2048 UV canvas
+        ctx.drawImage(activeDrawable, 0, 0, W, H);
+      } else {
+        // Natural proportional sublimation mapping for standalone pattern/texture
+        // 1. Badan Depan: (0, 0, 1024, 1475) - menutupi seluruh pola badan depan hingga ujung kelim bawah
+        ctx.drawImage(activeDrawable, 0, 0, 1024, 1475);
+
+        // 2. Badan Belakang: (1024, 0, 1024, 1475) - HORIZONTALLY MIRRORED untuk sambungan jahitan seamless
+        ctx.save();
+        ctx.translate(2048, 0);
+        ctx.scale(-1, 1);
+        ctx.drawImage(activeDrawable, 0, 0, 1024, 1475);
+        ctx.restore();
+
+        // 3. Lengan: Proportional 1:1 natural crop without stretching
+        const nw =
+          activeDrawable instanceof HTMLImageElement
+            ? activeDrawable.naturalWidth || 800
+            : (activeDrawable as HTMLCanvasElement).width || 800;
+        const nh =
+          activeDrawable instanceof HTMLImageElement
+            ? activeDrawable.naturalHeight || 1100
+            : (activeDrawable as HTMLCanvasElement).height || 1100;
+        const scaleX = nw / 1024;
+        const scaleY = nh / 1475;
+        const cropW = 790 * scaleX;
+        const cropH = 445 * scaleY;
+        const cropX = Math.max(0, ((1024 - 790) / 2) * scaleX);
+        const cropY = Math.max(0, 150 * scaleY);
+
+        // Lengan Kiri (0, 1475, 790, 445)
+        ctx.drawImage(activeDrawable, cropX, cropY, cropW, cropH, 0, 1475, 790, 445);
+
+        // Lengan Kanan (790, 1475, 790, 445) - mirrored
+        ctx.save();
+        ctx.translate(790 + 790, 1475);
+        ctx.scale(-1, 1);
+        ctx.drawImage(activeDrawable, cropX, cropY, cropW, cropH, 0, 0, 790, 445);
+        ctx.restore();
+
+        // Collar strip (0, 1920, 2048, 128)
+        ctx.drawImage(activeDrawable, 0, 0, nw, Math.min(nh, 64 * scaleY), 0, 1920, 2048, 128);
+      }
+
+      // Custom collar override if specified and not default
+      if (jerseyConfig.collarColor && jerseyConfig.collarColor !== 'auto') {
+        drawBleedBox(0, 1920, 2048, 128, (pCtx) => {
+          pCtx.fillStyle = jerseyConfig.collarColor;
+          pCtx.fillRect(0, 1920, 2048, 128);
+        });
+      }
+    } else {
+      // 1. Badan Depan (Front Body Box: 0, 0, 1024, 1475 - menutupi kelim bawah)
+      drawBleedBox(0, 0, 1024, 1475, (pCtx) => {
+        pCtx.fillStyle = partColors.frontBody;
+        pCtx.fillRect(0, 0, 1024, 1475);
+        drawPattern(pCtx, jerseyConfig.secondaryColor);
+      });
+
+      // 2. Badan Belakang (Back Body Box: 1024, 0, 1024, 1475 - menutupi kelim bawah)
+      drawBleedBox(1024, 0, 1024, 1475, (pCtx) => {
+        pCtx.fillStyle = partColors.backBody;
+        pCtx.fillRect(1024, 0, 1024, 1475);
+        drawPattern(pCtx, jerseyConfig.secondaryColor);
+      });
+
+      // 3. Lengan Kiri (Left Sleeve Box: 0, 1475, 790, 445)
+      drawBleedBox(0, 1475, 790, 445, (pCtx) => {
+        pCtx.fillStyle = partColors.leftSleeve;
+        pCtx.fillRect(0, 1475, 790, 445);
+        drawPattern(pCtx, jerseyConfig.secondaryColor);
+      });
+
+      // 4. Lengan Kanan (Right Sleeve Box: 790, 1475, 1258, 445)
+      drawBleedBox(790, 1475, 1258, 445, (pCtx) => {
+        pCtx.fillStyle = partColors.rightSleeve;
+        pCtx.fillRect(790, 1475, 1258, 445);
+        drawPattern(pCtx, jerseyConfig.secondaryColor);
+      });
+
+      // 5. Kerah / Rib (Collar Band Box: 0, 1920, 2048, 128)
+      drawBleedBox(0, 1920, 2048, 128, (pCtx) => {
+        pCtx.fillStyle = partColors.collar || jerseyConfig.accentColor;
+        pCtx.fillRect(0, 1920, 2048, 128);
+      });
+    }
+
+    // Layer Player Name & Number onto Back Body (always on top of template or solid color)
+    drawBleedBox(1024, 0, 1024, 1475, (pCtx) => {
       // Nama Punggung (Hanya jika diaktifkan dan ada isinya)
       if (showPlayerName && jerseyConfig.playerName) {
         const npPos = jerseyConfig.playerNamePos || { x: 75.0, y: 16.5, scale: 1 };
@@ -246,26 +358,6 @@ export const Jersey3DViewer: React.FC<Jersey3DViewerProps> = ({
         pCtx.fillText(jerseyConfig.playerNumber, numX, numY);
         pCtx.restore();
       }
-    });
-
-    // 3. Lengan Kiri (Left Sleeve Box: 0, 1375, 795, 545 - melebihi garis pola)
-    drawBleedBox(0, 1375, 795, 545, (pCtx) => {
-      pCtx.fillStyle = partColors.leftSleeve;
-      pCtx.fillRect(0, 1375, 795, 545);
-      drawPattern(pCtx, jerseyConfig.secondaryColor);
-    });
-
-    // 4. Lengan Kanan (Right Sleeve Box: 795, 1375, 1253, 545 - melebihi garis pola)
-    drawBleedBox(795, 1375, 1253, 545, (pCtx) => {
-      pCtx.fillStyle = partColors.rightSleeve;
-      pCtx.fillRect(795, 1375, 1253, 545);
-      drawPattern(pCtx, jerseyConfig.secondaryColor);
-    });
-
-    // 5. Kerah / Rib (Collar Band Box: 0, 1920, 2048, 128 - melebihi garis pola)
-    drawBleedBox(0, 1920, 2048, 128, (pCtx) => {
-      pCtx.fillStyle = partColors.collar || jerseyConfig.accentColor;
-      pCtx.fillRect(0, 1920, 2048, 128);
     });
 
     // 6. Elemen Kustom Tambahan (Gambar/Logo & Teks Bebas yang Ditambahkan User)
@@ -810,6 +902,97 @@ export const Jersey3DViewer: React.FC<Jersey3DViewerProps> = ({
     link.click();
   };
 
+  // Template carousel navigation
+  const currentTemplateIndex = useMemo(() => {
+    return JERSEY_TEMPLATES.findIndex(
+      (t) =>
+        t.id === jerseyConfig.templateId ||
+        t.textureUrl === jerseyConfig.templateTextureUrl
+    );
+  }, [jerseyConfig.templateId, jerseyConfig.templateTextureUrl]);
+
+  const currentTemplate =
+    currentTemplateIndex >= 0 ? JERSEY_TEMPLATES[currentTemplateIndex] : null;
+
+  const applyTemplate = useCallback((tmpl: JerseyTemplateItem) => {
+    if (!onChangeJerseyConfig) return;
+
+    let elements = (jerseyConfig.customElements || []).filter(
+      (el) => !el.id.startsWith('tmpl-')
+    );
+
+    if (elements.length === 0) {
+      elements = [
+        {
+          id: 'default-badge',
+          type: 'image',
+          name: 'Logo Klub (Dada Kiri)',
+          imageUrl: '/mockups/elements/badge_black.png',
+          x: 35.0,
+          y: 20.0,
+          scale: 0.55,
+        },
+        {
+          id: 'default-apparel',
+          type: 'image',
+          name: 'Logo Apparel (Dada Kanan)',
+          imageUrl: '/mockups/elements/apparel_black.png',
+          x: 15.0,
+          y: 20.0,
+          scale: 0.45,
+        },
+        {
+          id: 'default-sponsor',
+          type: 'image',
+          name: 'Sponsor Dada (Cursive)',
+          imageUrl: '/mockups/elements/sponsor_black.png',
+          x: 25.0,
+          y: 38.0,
+          scale: 1.1,
+        },
+      ];
+    } else {
+      elements = elements.map((el) => {
+        if (el.imageUrl?.includes('/mockups/elements/')) {
+          const newUrl = el.imageUrl.replace('_white.png', '_black.png');
+          return { ...el, imageUrl: newUrl };
+        }
+        return el;
+      });
+    }
+
+    onChangeJerseyConfig({
+      ...jerseyConfig,
+      templateId: tmpl.id,
+      templateTextureUrl: tmpl.textureUrl,
+      collarColor: tmpl.defaultCollarColor || jerseyConfig.collarColor,
+      numberColor: '#111827',
+      numberStrokeColor: '#ffffff',
+      showPlayerName: true,
+      showPlayerNumber: true,
+      colorPalette: undefined,
+      customElements: elements,
+    });
+  }, [onChangeJerseyConfig, jerseyConfig]);
+
+  const handlePrevTemplate = useCallback(() => {
+    if (!onChangeJerseyConfig) return;
+    const prevIdx =
+      currentTemplateIndex <= 0
+        ? JERSEY_TEMPLATES.length - 1
+        : currentTemplateIndex - 1;
+    applyTemplate(JERSEY_TEMPLATES[prevIdx]);
+  }, [currentTemplateIndex, applyTemplate]);
+
+  const handleNextTemplate = useCallback(() => {
+    if (!onChangeJerseyConfig) return;
+    const nextIdx =
+      currentTemplateIndex >= JERSEY_TEMPLATES.length - 1
+        ? 0
+        : currentTemplateIndex + 1;
+    applyTemplate(JERSEY_TEMPLATES[nextIdx]);
+  }, [currentTemplateIndex, applyTemplate]);
+
   return (
     <div className="w-full flex flex-col bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
       {/* Hidden 2048x2048 Master Texture Canvas */}
@@ -1071,6 +1254,41 @@ export const Jersey3DViewer: React.FC<Jersey3DViewerProps> = ({
               <RefreshCw className="w-3.5 h-3.5" />
             </button>
           </div>
+        )}
+
+        {/* Carousel Prev / Next Template Navigation Buttons */}
+        {onChangeJerseyConfig && (
+          <>
+            {/* Left Button (Prev Template) */}
+            <button
+              type="button"
+              onClick={handlePrevTemplate}
+              className="absolute left-3 md:left-5 top-1/2 -translate-y-1/2 z-20 w-11 h-11 md:w-12 md:h-12 rounded-full bg-white/90 hover:bg-white text-slate-800 hover:text-sky-600 shadow-xl border border-slate-200/90 backdrop-blur-md flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 cursor-pointer group"
+              title="Template Sebelumnya (Next/Prev)"
+            >
+              <ChevronLeft className="w-6 h-6 stroke-[2.5] -translate-x-0.5 group-hover:-translate-x-1 transition-transform" />
+            </button>
+
+            {/* Right Button (Next Template) */}
+            <button
+              type="button"
+              onClick={handleNextTemplate}
+              className="absolute right-3 md:right-5 top-1/2 -translate-y-1/2 z-20 w-11 h-11 md:w-12 md:h-12 rounded-full bg-white/90 hover:bg-white text-slate-800 hover:text-sky-600 shadow-xl border border-slate-200/90 backdrop-blur-md flex items-center justify-center transition-all duration-200 hover:scale-110 active:scale-95 cursor-pointer group"
+              title="Template Berikutnya (Next/Prev)"
+            >
+              <ChevronRight className="w-6 h-6 stroke-[2.5] translate-x-0.5 group-hover:translate-x-1 transition-transform" />
+            </button>
+
+            {/* Template Indicator Pill (Top Center) */}
+            {currentTemplate && (
+              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 px-3.5 py-1.5 rounded-full bg-slate-900/80 backdrop-blur-md border border-white/15 text-white text-xs font-semibold flex items-center gap-2 shadow-lg max-w-[85%] truncate pointer-events-none">
+                <span className="text-sky-400 font-bold shrink-0">
+                  {currentTemplateIndex + 1}/{JERSEY_TEMPLATES.length}
+                </span>
+                <span className="text-slate-200 truncate">{currentTemplate.name}</span>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

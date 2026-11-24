@@ -223,6 +223,15 @@ export const CartModal: React.FC<CartModalProps> = ({
   const generateCartWAMessage = () => {
     let itemsText = '';
     selectedItems.forEach((item, index) => {
+      const rosterText =
+        item.jerseyConfig?.roster && item.jerseyConfig.roster.length > 0
+          ? `\n• Roster Tim (${item.jerseyConfig.roster.length} pcs):\n  ${item.jerseyConfig.roster
+              .map((p, i) => `${i + 1}. ${p.name} #${p.number} (${p.size})`)
+              .join('\n  ')}`
+          : item.jerseyConfig
+          ? `\n• Jersey 3D: #${item.jerseyConfig.playerNumber} ${item.jerseyConfig.playerName}`
+          : '';
+
       itemsText += `
 📦 *ITEM #${index + 1} (${item.quantity} pcs)*
 • Model: ${item.productTypeName || (item.neckType === 'round' ? 'O-Neck' : 'V-Neck')} (${item.sleeveType === 'short' ? 'Lengan Pendek' : 'Lengan Panjang'})
@@ -234,7 +243,7 @@ export const CartModal: React.FC<CartModalProps> = ({
         item.printBreakdown && item.printBreakdown.length > 0
           ? item.printBreakdown.map((p) => `${p.placement}: ${p.name}`).join(', ')
           : 'Polos'
-      }
+      }${rosterText}
 • Subtotal: Rp ${item.subtotal.toLocaleString('id-ID')}
 ---------------------------------------`;
     });
@@ -507,8 +516,30 @@ ${paymentType === 'dp_50' ? `• Sisa Pelunasan (Dibayar Saat Siap Kirim): Rp ${
                           {item.size}
                         </div>
                         {item.jerseyConfig && (
-                          <div className="text-[10px] font-bold text-sky-700 bg-sky-50 px-1.5 py-0.5 rounded inline-block">
-                            Jersey 3D: #{item.jerseyConfig.playerNumber} {item.jerseyConfig.playerName} ({item.jerseyConfig.pattern})
+                          <div className="space-y-1">
+                            <div className="text-[10px] font-bold text-sky-700 bg-sky-50 px-1.5 py-0.5 rounded inline-block">
+                              Jersey 3D: #{item.jerseyConfig.playerNumber} {item.jerseyConfig.playerName}
+                            </div>
+                            {item.jerseyConfig.roster && item.jerseyConfig.roster.length > 1 && (
+                              <details className="text-[10px] text-slate-600 bg-slate-50 p-1.5 rounded-lg border border-slate-200">
+                                <summary className="font-bold cursor-pointer text-sky-700 hover:text-sky-800">
+                                  Lihat Roster Tim ({item.jerseyConfig.roster.length} Pemain)
+                                </summary>
+                                <div className="mt-1 max-h-24 overflow-y-auto space-y-0.5 divide-y divide-slate-100 pr-1">
+                                  {item.jerseyConfig.roster.map((p, pIdx) => (
+                                    <div
+                                      key={p.id}
+                                      className="pt-0.5 flex items-center justify-between font-mono text-[9px]"
+                                    >
+                                      <span>
+                                        #{pIdx + 1} {p.name} (#{p.number})
+                                      </span>
+                                      <span className="font-bold text-slate-800">{p.size}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </details>
+                            )}
                           </div>
                         )}
                         {item.printBreakdown && item.printBreakdown.length > 0 && (

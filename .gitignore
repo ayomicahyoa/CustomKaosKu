@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Master Raw Design Assets (CorelDRAW & offline archives)
+*.cdr
+*.tmp
+src/Design Jersey templates/

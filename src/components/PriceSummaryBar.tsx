@@ -216,6 +216,16 @@ ${paymentType === 'dp_50' ? `• Sisa Pelunasan (Dibayar Saat Siap Kirim): Rp ${
   };
 
   const generateOrderDetailsText = () => {
+    const rosterInfo =
+      state.jerseyConfig?.roster && state.jerseyConfig.roster.length > 0
+        ? `\n\nDAFTAR ROSTER PEMAIN (${state.jerseyConfig.roster.length} PCS):\n` +
+          state.jerseyConfig.roster
+            .map((p, i) => `${i + 1}. ${p.name} #${p.number} (${p.size})`)
+            .join('\n')
+        : state.jerseyConfig
+        ? `\n\nDETAIL JERSEY:\n- Pemain: ${state.jerseyConfig.playerName} (#${state.jerseyConfig.playerNumber})`
+        : '';
+
     return `DETAIL PESANAN CUSTOM APPAREL BANDUNG.ID
 =====================================
 Kode Order: ${orderCode}
@@ -234,7 +244,7 @@ SPESIFIKASI KAOS:
 - Bahan: ${state.material.name} (${state.material.gsm})
 - Ukuran: ${getSizeSummaryText()}
 - Jumlah: ${state.quantity} pcs
-- Teknik Sablon: ${state.technique.name}
+- Teknik Sablon: ${state.technique.name}${rosterInfo}
 
 AREA CETAK:
 ${activePrintBreakdown.length > 0 ? activePrintBreakdown.map(p => `- ${p.placement}: ${p.name} (Rp ${p.cost.toLocaleString('id-ID')})`).join('\n') : '- Polos (tanpa sablon)'}

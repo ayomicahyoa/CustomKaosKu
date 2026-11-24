@@ -110,6 +110,9 @@ export interface JerseyGraphicElement {
   type: 'image' | 'text';
   name: string;
   imageUrl?: string;
+  originalImageUrl?: string;
+  hasRemovedBg?: boolean;
+  bgTolerance?: number;
   text?: string;
   x: number; // percentage 0 - 100
   y: number; // percentage 0 - 100
@@ -120,7 +123,17 @@ export interface JerseyGraphicElement {
   fontFamily?: string;
 }
 
+export interface JerseyColorPaletteItem {
+  id: string;
+  originalHex: string;
+  currentHex: string;
+  percentage: number;
+  label?: string;
+}
+
 export interface JerseyCustomization {
+  templateId?: string; // e.g. 'design-01', 'design-02', etc. or 'none'
+  templateTextureUrl?: string; // full URL to pre-mapped 2048x2048 texture
   pattern: JerseyPattern;
   primaryColor: string;
   secondaryColor: string;
@@ -128,6 +141,8 @@ export interface JerseyCustomization {
   collarColor: string;
   partColors?: JerseyPartColors;
   activePart?: 'all' | 'front' | 'back' | 'sleeve-left' | 'sleeve-right' | 'collar';
+  // Dynamic detected color palette for template recoloring
+  colorPalette?: JerseyColorPaletteItem[];
   // Player Name & Number (Optional, can be toggled on/off)
   showPlayerName: boolean;
   playerName: string;
